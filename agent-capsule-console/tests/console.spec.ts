@@ -35,6 +35,8 @@ test("first render is a guided demo with four clear steps", async ({ page }) => 
   await expect(page.getByRole("group", { name: "Live test scenarios" })).toBeVisible();
   await expect(page.getByRole("button", { name: /Sensitive CRM egress/ })).toBeVisible();
   await expect(page.getByLabel("Company test matrix")).toBeVisible();
+  await expect(page.getByLabel("Scenario suite results")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Run scenario suite" })).toBeVisible();
   await expect(page.getByText("Benefits Eligibility", { exact: true })).toBeVisible();
   await expect(page.getByText("Block before release", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: /Contract Review/ }).click();
@@ -135,6 +137,7 @@ test("live agent test calls bridge and renders safe evidence", async ({ page }) 
   const liveRunId = "run_live_claims_triage_001";
   const liveTraceId = "trc_live_claims_triage_001";
   let liveRunCalled = false;
+  let suiteCalled = false;
   let evidencePackageCalled = false;
   let verificationCalled = false;
   let customerReportCalled = false;
@@ -156,6 +159,27 @@ test("live agent test calls bridge and renders safe evidence", async ({ page }) 
       run_id: liveRunId,
       trace_id: liveTraceId
     };
+    const suiteApprovalRun = {
+      run_id: "run_suite_approval_001",
+      trace_id: "trc_suite_approval_001",
+      agent: { name: "claims-triage", version: "demo.1" },
+      mode: "observe",
+      created_at: "2026-06-23T00:01:40Z",
+      span_count: 4
+    };
+    const suiteApprovalTrace = {
+      ...safeTrace,
+      source_trace_id: "trc_suite_approval_001",
+      diagnostic_summary: {
+        ...safeTrace.diagnostic_summary,
+        status: "prepared"
+      }
+    };
+    const suiteApprovalPrivacyMap = {
+      ...privacyMap,
+      run_id: "run_suite_approval_001",
+      trace_id: "trc_suite_approval_001"
+    };
     const responses: Record<string, unknown> = {
       "/runs": {
         ok: true,
@@ -171,6 +195,10 @@ test("live agent test calls bridge and renders safe evidence", async ({ page }) 
       [`/runs/${runId}/timeline`]: safeTrace,
       [`/runs/${runId}/privacy-map`]: privacyMap,
       [`/runs/${runId}/replay`]: replayComparison,
+      "/runs/run_suite_approval_001": suiteApprovalRun,
+      "/runs/run_suite_approval_001/timeline": suiteApprovalTrace,
+      "/runs/run_suite_approval_001/privacy-map": suiteApprovalPrivacyMap,
+      "/runs/run_suite_approval_001/replay": replayComparison,
       "/manifests/claims-triage": manifest,
       "/session/end": { ok: true },
       "/live-agents/claims-triage/run": {
@@ -209,6 +237,62 @@ test("live agent test calls bridge and renders safe evidence", async ({ page }) 
           policy_findings: 2
         },
         next_actions: ["Review destinations and data classes."]
+      },
+      "/live-agents/claims-triage/scenario-suite": {
+        ok: true,
+        suite_id: "suite_claims_triage_001",
+        agent_id: "claims-triage",
+        agent_name: "claims-triage",
+        created_at: "2026-06-23T00:01:30Z",
+        overall_status: "needs_review",
+        scenario_count: 3,
+        total_findings: 6,
+        safe_payloads_only: true,
+        next_action: "Open the highest-finding scenario, choose a policy control, and export customer evidence.",
+        results: [
+          {
+            scenario_id: "sensitive-crm-egress",
+            scenario_name: "Sensitive CRM egress",
+            expected_result: "High-risk destination review",
+            data_classes: ["email", "account_notes"],
+            destination_id: "crm_tool",
+            status: "needs_review",
+            summary: "2 policy findings across 1 destination.",
+            run_id: "run_suite_sensitive_crm_001",
+            trace_id: "trc_suite_sensitive_crm_001",
+            finding_count: 2,
+            encrypted_payloads: 4,
+            safe_payloads_only: true
+          },
+          {
+            scenario_id: "metadata-only-check",
+            scenario_name: "Metadata-only update",
+            expected_result: "Destination declaration review",
+            data_classes: ["operational_metadata"],
+            destination_id: "crm_tool",
+            status: "needs_review",
+            summary: "1 policy finding across 1 destination.",
+            run_id: "run_suite_metadata_001",
+            trace_id: "trc_suite_metadata_001",
+            finding_count: 1,
+            encrypted_payloads: 4,
+            safe_payloads_only: true
+          },
+          {
+            scenario_id: "approval-required",
+            scenario_name: "Approval-required note",
+            expected_result: "Human approval control",
+            data_classes: ["email", "account_notes", "medical_context"],
+            destination_id: "crm_tool",
+            status: "needs_review",
+            summary: "3 policy findings across 1 destination.",
+            run_id: "run_suite_approval_001",
+            trace_id: "trc_suite_approval_001",
+            finding_count: 3,
+            encrypted_payloads: 4,
+            safe_payloads_only: true
+          }
+        ]
       },
       [`/runs/${liveRunId}/evidence-package`]: {
         ok: true,
@@ -306,6 +390,43 @@ test("live agent test calls bridge and renders safe evidence", async ({ page }) 
           requires_policy_commit: true,
           blocks_plaintext_payloads: true
         },
+        scorecard: {
+          score: 100,
+          status: "ready",
+          summary: "Ready for controlled customer review.",
+          checks: [
+            {
+              id: "artifact_integrity",
+              label: "Evidence package hash verified",
+              status: "pass",
+              detail: "verified"
+            },
+            {
+              id: "plaintext_exclusion",
+              label: "Plaintext payloads excluded",
+              status: "pass",
+              detail: "Prompts, documents, outputs, tool bodies, secrets, and user identifiers are excluded."
+            },
+            {
+              id: "destination_control",
+              label: "High-risk egress controlled",
+              status: "pass",
+              detail: "2 high-risk findings with policy action redact."
+            },
+            {
+              id: "ci_gate",
+              label: "CI policy gate ready",
+              status: "pass",
+              detail: "CI gate: passes when redaction markers are present."
+            },
+            {
+              id: "evidence_completeness",
+              label: "Hashes and redaction markers retained",
+              status: "pass",
+              detail: "4 content hashes and 1 redaction markers."
+            }
+          ]
+        },
         privacy_summary: {
           destination_count: 1,
           finding_count: 2,
@@ -340,6 +461,10 @@ test("live agent test calls bridge and renders safe evidence", async ({ page }) 
       const body = route.request().postDataJSON();
       expect(body.scenario_id).toBe("sensitive-crm-egress");
     }
+    if (url.pathname === "/live-agents/claims-triage/scenario-suite") {
+      suiteCalled = true;
+      expect(route.request().method()).toBe("POST");
+    }
     if (url.pathname === `/runs/${liveRunId}/evidence-package`) {
       evidencePackageCalled = true;
       expect(route.request().method()).toBe("POST");
@@ -363,6 +488,24 @@ test("live agent test calls bridge and renders safe evidence", async ({ page }) 
   });
 
   await page.goto(`/?bridge=${encodeURIComponent(bridgeUrl)}&session=live-token`);
+  await page.getByRole("button", { name: "Run scenario suite" }).click();
+  const suitePanel = page.getByLabel("Scenario suite results");
+  await expect(page.getByText("suite_claims_triage_001", { exact: true })).toBeVisible();
+  await expect(page.getByText("3 scenarios", { exact: true })).toBeVisible();
+  await expect(page.getByText("6 findings", { exact: true })).toBeVisible();
+  await expect(suitePanel.getByText("Metadata-only update", { exact: true })).toBeVisible();
+  await expect(suitePanel.getByText("run_suite_approval_001", { exact: true })).toBeVisible();
+  expect(suiteCalled).toBe(true);
+  await suitePanel
+    .locator(".suite-result-row")
+    .filter({ hasText: "Approval-required note" })
+    .getByRole("button", { name: "Open result" })
+    .click();
+  await expect(page.getByRole("heading", { name: "Review where data went" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "run_suite_approval_001" })).toBeVisible();
+  await expect(page.locator(".live-result-strip").getByText("trc_suite_approval_001", { exact: true })).toBeVisible();
+  await expect(page.getByText("Approval-required note", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Start here" }).click();
   await page.getByRole("button", { name: "Run live agent test" }).click();
   await expect(page.getByRole("heading", { name: "Review where data went" })).toBeVisible();
   expect(liveRunCalled).toBe(true);
@@ -391,6 +534,10 @@ test("live agent test calls bridge and renders safe evidence", async ({ page }) 
   const customerReport = page.getByLabel("Customer verification report");
   await expect(customerReport.getByRole("heading", { name: "This package can be reviewed without private payloads." })).toBeVisible();
   await expect(customerReport.getByText("claims-triage", { exact: false })).toBeVisible();
+  await expect(customerReport.getByText("Readiness score", { exact: true })).toBeVisible();
+  await expect(customerReport.getByText("Ready for controlled customer review.", { exact: true })).toBeVisible();
+  await expect(customerReport.getByText("Evidence package hash verified", { exact: true })).toBeVisible();
+  await expect(customerReport.getByText("High-risk egress controlled", { exact: true })).toBeVisible();
   await expect(customerReport.getByText("Plaintext payloads", { exact: true })).toBeVisible();
   await expect(customerReport.getByText("Excluded", { exact: true })).toBeVisible();
   await expect(customerReport.getByText("ready_for_merge", { exact: true })).toBeVisible();

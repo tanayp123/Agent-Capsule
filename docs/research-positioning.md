@@ -56,22 +56,22 @@ This creates a clearer buyer story than "another agent tracing tool":
 The console demo should prove six things in under three minutes:
 
 1. A company is running multiple agents across sensitive workflows.
-2. The user can choose a scenario, use the company test matrix to select a risky agent, and run a live agent test, not only inspect static fixture data.
+2. The user can choose a scenario, use the company test matrix to select a risky agent, and run one scenario or the full scenario suite, not only inspect static fixture data.
 3. The test creates encrypted trace payloads locally.
 4. The browser receives safe metadata only: workflow timeline, hashes, data classes, destinations, span counts, token counts, redaction markers, and policy decisions.
 5. The reviewer can choose a policy control: allow, allow selected fields, redact, require human approval, or block.
-6. The final evidence package and customer verification report are shareable with a teammate, security reviewer, or customer without plaintext prompts, documents, model outputs, tool payloads, secrets, or user identifiers.
+6. The final evidence package, readiness scorecard, and customer verification report are shareable with a teammate, security reviewer, or customer without plaintext prompts, documents, model outputs, tool payloads, secrets, or user identifiers.
 
 ## Demo Talk Track
 
 Use this sequence:
 
 1. "This company has ten production-like agents touching claims, support, legal, finance, and risk workflows."
-2. "I can choose a scenario, see which agents are riskiest, and run a live privacy test from the console."
+2. "I can choose a scenario, see which agents are riskiest, and run one privacy test or the full scenario suite from the console."
 3. "The local bridge captures encrypted payloads, but the UI only sees safe metadata."
 4. "Now I can see the safe timeline, where data went, which classes moved, and what policy decided."
 5. "I can choose the control: allow selected fields, redact, require approval, or block."
-6. "Finally, I can export a safe trace, verify the saved package hash, and build a customer report for enterprise review."
+6. "Finally, I can export a safe trace, verify the saved package hash, and build a customer report with a privacy readiness scorecard for enterprise review."
 
 ## Product Principles
 

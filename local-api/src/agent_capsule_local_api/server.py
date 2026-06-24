@@ -246,6 +246,8 @@ class LocalApiBridge:
                 self._send(handler, self.evidence_package(route[1], body))
             elif len(route) == 3 and route[0] == "live-agents" and route[2] == "run":
                 self._send(handler, self.run_live_agent(route[1], body))
+            elif len(route) == 3 and route[0] == "live-agents" and route[2] == "scenario-suite":
+                self._send(handler, self.run_scenario_suite(route[1]))
             elif len(route) == 3 and route[0] == "payloads" and route[2] == "reveal-local":
                 self._send(handler, self.reveal_payload(route[1], body))
             elif route == ["session", "end"]:
@@ -518,6 +520,7 @@ class LocalApiBridge:
                 "audience": "enterprise customer",
                 "status": "ready" if verification["verification_status"] == "verified" else "needs_review",
             },
+            "scorecard": _customer_report_scorecard(verification, package, safe_trace, privacy_map),
         }
         self._audit("customer_verification_report_created", {
             "package_id": package_id,
@@ -633,6 +636,52 @@ class LocalApiBridge:
             "policy_action_hint": demo["policy_action_hint"],
         })
         return result
+
+    def run_scenario_suite(self, agent_id: str) -> Dict[str, Any]:
+        demo = DEMO_LIVE_AGENTS.get(agent_id) or _generic_demo_live_agent(agent_id)
+        suite_id = "suite_%s_%s" % (_safe_slug(agent_id), secrets.token_hex(4))
+        results = []
+        for scenario_id in DEMO_LIVE_SCENARIOS:
+            live_result = self.run_live_agent(agent_id, {"scenario_id": scenario_id})
+            result = live_result["test_result"]
+            scenario = live_result["test_scenario"]
+            results.append({
+                "scenario_id": scenario["id"],
+                "scenario_name": scenario["name"],
+                "expected_result": scenario["expected_result"],
+                "data_classes": scenario["data_classes"],
+                "destination_id": scenario["destination_id"],
+                "status": result["status"],
+                "summary": result["summary"],
+                "run_id": live_result["run"]["run_id"],
+                "trace_id": live_result["run"]["trace_id"],
+                "finding_count": live_result["proof"]["policy_findings"],
+                "encrypted_payloads": result["encrypted_payloads"],
+                "safe_payloads_only": result["safe_payloads_only"],
+            })
+        total_findings = sum(item["finding_count"] for item in results)
+        overall_status = "needs_review" if total_findings else "passed"
+        suite = {
+            "ok": True,
+            "suite_id": suite_id,
+            "agent_id": agent_id,
+            "agent_name": demo["name"],
+            "created_at": _now(),
+            "overall_status": overall_status,
+            "scenario_count": len(results),
+            "total_findings": total_findings,
+            "safe_payloads_only": all(item["safe_payloads_only"] for item in results),
+            "results": results,
+            "next_action": "Open the highest-finding scenario, choose a policy control, and export customer evidence.",
+        }
+        self._audit("scenario_suite_captured", {
+            "suite_id": suite_id,
+            "agent_id": agent_id,
+            "scenario_count": len(results),
+            "total_findings": total_findings,
+            "overall_status": overall_status,
+        })
+        return suite
 
     def manifest(self, manifest_id: str) -> Dict[str, Any]:
         if self.config.manifest_path is None or not self.config.manifest_path.exists():
@@ -889,6 +938,86 @@ def _generic_demo_live_agent(agent_id: str) -> Dict[str, Any]:
 def _live_test_scenario(value: Any) -> Dict[str, Any]:
     scenario_id = str(value or DEFAULT_LIVE_SCENARIO_ID)
     return DEMO_LIVE_SCENARIOS.get(scenario_id) or DEMO_LIVE_SCENARIOS[DEFAULT_LIVE_SCENARIO_ID]
+
+
+def _customer_report_scorecard(
+    verification: Dict[str, Any],
+    package: Dict[str, Any],
+    safe_trace: Dict[str, Any],
+    privacy_map: Dict[str, Any],
+) -> Dict[str, Any]:
+    policy_response = package.get("selected_policy_response") or {}
+    ci_gate = package.get("ci_gate") or {}
+    high_risk_findings = [
+        finding
+        for finding in privacy_map.get("findings", [])
+        if finding.get("kind") == "undeclared_high_risk_egress"
+    ]
+    redaction_marker_count = len(safe_trace.get("redaction_markers", []))
+    content_hash_count = len(safe_trace.get("content_hashes", []))
+    policy_action = policy_response.get("action")
+    controlled_actions = {"allow_fields", "redact", "require_approval", "block"}
+
+    checks = [
+        {
+            "id": "artifact_integrity",
+            "label": "Evidence package hash verified",
+            "status": "pass" if verification.get("verification_status") == "verified" else "fail",
+            "detail": verification.get("verification_status", "unknown"),
+        },
+        {
+            "id": "plaintext_exclusion",
+            "label": "Plaintext payloads excluded",
+            "status": "pass",
+            "detail": "Prompts, documents, outputs, tool bodies, secrets, and user identifiers are excluded.",
+        },
+        {
+            "id": "destination_control",
+            "label": "High-risk egress controlled",
+            "status": "pass" if policy_action in controlled_actions else "review",
+            "detail": "%s high-risk findings with policy action %s." % (
+                len(high_risk_findings),
+                policy_action or "not_set",
+            ),
+        },
+        {
+            "id": "ci_gate",
+            "label": "CI policy gate ready",
+            "status": "pass" if ci_gate.get("status") == "ready_for_merge" else "review",
+            "detail": ci_gate.get("summary", "CI gate status unavailable."),
+        },
+        {
+            "id": "evidence_completeness",
+            "label": "Hashes and redaction markers retained",
+            "status": "pass" if content_hash_count and redaction_marker_count else "review",
+            "detail": "%s content hashes and %s redaction markers." % (
+                content_hash_count,
+                redaction_marker_count,
+            ),
+        },
+    ]
+    score = 100
+    for check in checks:
+        if check["status"] == "fail":
+            score -= 30
+        elif check["status"] == "review":
+            score -= 10
+    score = max(0, score)
+    if score >= 90:
+        status = "ready"
+        summary = "Ready for controlled customer review."
+    elif score >= 70:
+        status = "needs_review"
+        summary = "Review remaining controls before customer sharing."
+    else:
+        status = "blocked"
+        summary = "Do not share until failed controls are resolved."
+    return {
+        "score": score,
+        "status": status,
+        "summary": summary,
+        "checks": checks,
+    }
 
 
 def _safe_policy_response(value: Any) -> Dict[str, Any]:

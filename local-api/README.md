@@ -43,6 +43,7 @@ The startup line prints the selected localhost port and session token as JSON.
 - `GET /evidence-packages/:package_id/verify`
 - `GET /evidence-packages/:package_id/customer-report`
 - `POST /live-agents/:agent_id/run`
+- `POST /live-agents/:agent_id/scenario-suite`
 - `GET /manifests/:manifest_id`
 - `POST /payloads/:payload_id/reveal-local`
 - `POST /session/end`
@@ -61,6 +62,8 @@ The response includes:
 - `safe_trace`: redacted timeline, workflow graph, component versions, payload sizes, token counts, policy decisions, content hashes, and redaction markers
 - `privacy_map`: destinations, data classes, findings, and policy suggestions
 - `proof`: safe-trace readiness, encrypted payload count, redaction markers, and policy finding count
+
+`POST /live-agents/:agent_id/scenario-suite` runs every built-in scenario for the selected agent. It creates encrypted traces for each scenario and returns a safe suite summary with scenario IDs, run IDs, trace IDs, finding counts, encrypted payload counts, and safe-payload attestation. It does not return plaintext prompts, documents, model outputs, tool bodies, secrets, or user identifiers. The console can then open any suite result by using the returned `run_id` with `GET /runs/:run_id/timeline` and `GET /runs/:run_id/privacy-map`.
 
 ## Evidence Package
 
@@ -91,7 +94,7 @@ The `.sha256` sidecar is a detached SHA-256 hash of the saved JSON package. The 
 
 `GET /evidence-packages/:package_id/verify` recomputes the saved package hash and compares it with the sidecar. It returns `verified` when the artifact matches and `mismatch` when the saved JSON changed after the sidecar was written.
 
-`GET /evidence-packages/:package_id/customer-report` builds a customer-safe verification report from the saved evidence package. The report includes verification status, SHA-256 hash, sidecar path, safe run metadata, policy response, CI gate status, destination summaries, finding counts, content-hash counts, redaction-marker counts, and an explicit statement that plaintext payloads are not included.
+`GET /evidence-packages/:package_id/customer-report` builds a customer-safe verification report from the saved evidence package. The report includes verification status, SHA-256 hash, sidecar path, safe run metadata, policy response, CI gate status, destination summaries, finding counts, content-hash counts, redaction-marker counts, readiness scorecard, and an explicit statement that plaintext payloads are not included. The scorecard evaluates artifact integrity, plaintext exclusion, destination control, CI gate readiness, and evidence completeness.
 
 ## Safety Notes
 

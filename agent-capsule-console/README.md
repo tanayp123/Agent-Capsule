@@ -58,8 +58,8 @@ Open the printed URL. It includes `bridge` and `session` query parameters for th
 
 Use the console in this order:
 
-1. Choose a live test scenario, use the company test matrix to select the agent with the clearest risk signal, then click `Run live agent test` to capture a new encrypted run through the local bridge.
-2. Review the scenario result, run ID, trace ID, span count, findings, safe execution timeline, destination findings, data classes, and policy action.
+1. Choose a live test scenario, use the company test matrix to select the agent with the clearest risk signal, then click `Run live agent test` for one scenario or `Run scenario suite` for all built-in scenarios.
+2. Review the scenario result or suite result, run ID, trace ID, span count, findings, safe execution timeline, destination findings, data classes, and policy action.
 3. Choose a policy response: allow destination, allow selected fields, redact fields, require human approval, or block tool.
 4. Review the policy patch preview and CI gate summary.
 5. Click `Share safe proof`.
@@ -114,6 +114,7 @@ Live agent tests call:
 
 ```text
 POST /live-agents/:agent_id/run
+POST /live-agents/:agent_id/scenario-suite
 ```
 
 The response includes:
@@ -124,6 +125,8 @@ The response includes:
 - `safe_trace`: redacted workflow, spans, hashes, token counts, payload sizes, and policy decisions
 - `privacy_map`: destinations, data classes, findings, and policy suggestions
 - `proof`: safe trace readiness, encrypted payload count, redaction markers, and finding count
+
+The scenario suite endpoint returns a safe summary for every built-in scenario, including run ID, trace ID, result status, finding count, encrypted payload count, and safe-payload attestation. The console renders this as a compact suite panel. `Open result` loads the selected suite run into the safe data-flow view by calling the local bridge for timeline and privacy-map metadata.
 
 The proof step can also call:
 
@@ -142,7 +145,7 @@ When the console is connected to the local API bridge, generated packages are st
 .agent-capsule/evidence/<package_id>.json.sha256
 ```
 
-The proof step shows the filename, saved path, verification status, SHA-256 hash, sidecar path, source, CI summary, customer report status, customer finding count, and customer control count. `Verify saved package` asks the bridge to recompute the saved JSON hash and compare it with the sidecar. `Build customer report` turns the saved package into an enterprise-safe report with destination summaries, policy response, CI gate state, hash verification, excluded-data controls, and a clear statement that plaintext payloads are excluded. The report is rendered in the console so a founder or buyer can inspect the proof without opening raw JSON.
+The proof step shows the filename, saved path, verification status, SHA-256 hash, sidecar path, source, CI summary, customer report status, customer finding count, and customer control count. `Verify saved package` asks the bridge to recompute the saved JSON hash and compare it with the sidecar. `Build customer report` turns the saved package into an enterprise-safe report with destination summaries, policy response, CI gate state, hash verification, excluded-data controls, readiness scorecard, and a clear statement that plaintext payloads are excluded. The report is rendered in the console so a founder or buyer can inspect the proof without opening raw JSON.
 
 ## Privacy Behavior
 

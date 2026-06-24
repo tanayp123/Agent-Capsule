@@ -198,6 +198,27 @@ class LocalApiTests(unittest.TestCase):
                 self.assertTrue(index_path.exists())
                 self.assertGreater(len(json.loads(index_path.read_text(encoding="utf-8"))), 0)
 
+                status, suite, _headers = request_json(
+                    server,
+                    "POST",
+                    "/live-agents/claims-triage/scenario-suite",
+                    token="session-token",
+                    body={},
+                )
+                self.assertEqual(status, 200)
+                self.assertTrue(suite["ok"])
+                self.assertEqual(suite["scenario_count"], 3)
+                self.assertEqual(suite["overall_status"], "needs_review")
+                self.assertTrue(suite["safe_payloads_only"])
+                self.assertEqual(
+                    [result["scenario_id"] for result in suite["results"]],
+                    ["sensitive-crm-egress", "metadata-only-check", "approval-required"],
+                )
+                self.assertTrue(all(result["run_id"].startswith("run_live_claims_triage_") for result in suite["results"]))
+                serialized_suite = json.dumps(suite, sort_keys=True)
+                for raw_value in RAW_VALUES:
+                    self.assertNotIn(raw_value, serialized_suite)
+
                 status, evidence, _headers = request_json(
                     server,
                     "POST",
@@ -266,6 +287,11 @@ class LocalApiTests(unittest.TestCase):
                 self.assertTrue(customer_report["ok"])
                 self.assertEqual(customer_report["verification"]["status"], "verified")
                 self.assertEqual(customer_report["customer_summary"]["status"], "ready")
+                self.assertGreaterEqual(customer_report["scorecard"]["score"], 90)
+                self.assertEqual(customer_report["scorecard"]["status"], "ready")
+                self.assertIn("destination_control", [
+                    check["id"] for check in customer_report["scorecard"]["checks"]
+                ])
                 self.assertFalse(customer_report["privacy_summary"]["plaintext_payloads_included"])
                 self.assertGreaterEqual(customer_report["privacy_summary"]["destination_count"], 1)
                 self.assertGreaterEqual(customer_report["privacy_summary"]["finding_count"], 1)
@@ -298,6 +324,7 @@ class LocalApiTests(unittest.TestCase):
             audit = audit_path.read_text(encoding="utf-8")
             self.assertIn("live_agent_test_captured", audit)
             self.assertIn("sensitive-crm-egress", audit)
+            self.assertIn("scenario_suite_captured", audit)
             self.assertIn("evidence_package_created", audit)
             self.assertIn("evidence_package_verified", audit)
             self.assertIn("customer_verification_report_created", audit)

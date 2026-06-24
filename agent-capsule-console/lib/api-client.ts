@@ -48,6 +48,42 @@ export type LiveAgentRunResult = {
   next_actions: string[];
 };
 
+export type ScenarioSuiteResult = {
+  scenario_id: string;
+  scenario_name: string;
+  expected_result: string;
+  data_classes: string[];
+  destination_id: string;
+  status: string;
+  summary: string;
+  run_id: string;
+  trace_id: string;
+  finding_count: number;
+  encrypted_payloads: number;
+  safe_payloads_only: boolean;
+};
+
+export type ScenarioSuiteRunResult = {
+  ok: boolean;
+  suite_id: string;
+  agent_id: string;
+  agent_name: string;
+  created_at: string;
+  overall_status: string;
+  scenario_count: number;
+  total_findings: number;
+  safe_payloads_only: boolean;
+  results: ScenarioSuiteResult[];
+  next_action: string;
+};
+
+export type OpenedSuiteRunResult = {
+  run: RunSummary;
+  safe_trace: SafeTrace;
+  privacy_map: PrivacyMap;
+  replay_comparison: ReplayComparison;
+};
+
 export type EvidencePackageResult = {
   ok: boolean;
   evidence_package_version: number;
@@ -146,6 +182,17 @@ export type CustomerVerificationReport = {
     requires_policy_commit: boolean;
     blocks_plaintext_payloads: boolean;
   };
+  scorecard: {
+    score: number;
+    status: string;
+    summary: string;
+    checks: Array<{
+      id: string;
+      label: string;
+      status: "pass" | "review" | "fail" | string;
+      detail: string;
+    }>;
+  };
   privacy_summary: {
     destination_count: number;
     finding_count: number;
@@ -229,6 +276,37 @@ export class LocalApiBridgeClient {
     });
   }
 
+  async runScenarioSuite(agentId: string): Promise<ScenarioSuiteRunResult | null> {
+    if (!this.baseUrl) {
+      return null;
+    }
+    return this.fetchJson<ScenarioSuiteRunResult>(`/live-agents/${agentId}/scenario-suite`, {
+      method: "POST",
+      body: {}
+    });
+  }
+
+  async loadRunEvidence(runId: string): Promise<OpenedSuiteRunResult | null> {
+    if (!this.baseUrl) {
+      return null;
+    }
+    const [run, safeTrace, privacyMap, replayComparison] = await Promise.all([
+      this.fetchJson<Partial<RunSummary> & { agent?: { name?: string }; span_count?: number }>(`/runs/${runId}`),
+      this.fetchJson<SafeTrace>(`/runs/${runId}/timeline`),
+      this.fetchJson<PrivacyMap>(`/runs/${runId}/privacy-map`),
+      this.fetchJson<ReplayResponse>(`/runs/${runId}/replay`, {
+        method: "POST",
+        body: { mode: "structural" }
+      }).then(normalizeReplay)
+    ]);
+    return {
+      run: normalizeRunDetail(run, runId),
+      safe_trace: safeTrace,
+      privacy_map: privacyMap,
+      replay_comparison: replayComparison
+    };
+  }
+
   async createEvidencePackage(
     runId: string,
     policyResponse: Record<string, unknown>
@@ -297,6 +375,20 @@ function normalizeRuns(response: RunsResponse): RunSummary[] {
     ...run,
     status: run.status ?? "ok"
   }));
+}
+
+function normalizeRunDetail(
+  response: Partial<RunSummary> & { agent?: { name?: string }; span_count?: number },
+  runId: string
+): RunSummary {
+  return {
+    run_id: response.run_id ?? runId,
+    trace_id: response.trace_id ?? "local-trace",
+    agent_name: response.agent_name ?? response.agent?.name ?? "agent",
+    status: response.status ?? "prepared",
+    span_count: response.span_count ?? 0,
+    created_at: response.created_at ?? new Date().toISOString()
+  };
 }
 
 function normalizeReplay(response: ReplayResponse): ReplayComparison {

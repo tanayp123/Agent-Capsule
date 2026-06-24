@@ -19,7 +19,9 @@ import {
   fixtureSnapshot,
   type CustomerVerificationReport,
   type EvidencePackageResult,
-  type LiveAgentRunResult
+  type LiveAgentRunResult,
+  type ScenarioSuiteRunResult,
+  type ScenarioSuiteResult
 } from "@/lib/api-client";
 import { getEphemeralSessionToken, rotateEphemeralSessionToken, setEphemeralSessionToken } from "@/lib/session-token";
 import type { PrivacyMap, RunSummary, SafeTrace } from "@/lib/types";
@@ -78,6 +80,19 @@ type LiveRunStatus = {
   traceId?: string;
   spanCount?: number;
   findings?: number;
+};
+
+type ScenarioSuiteStatus = {
+  state: "idle" | "running" | "ready" | "demo" | "error";
+  message: string;
+  suiteId?: string;
+  agentId?: string;
+  overallStatus?: string;
+  scenarioCount?: number;
+  totalFindings?: number;
+  safePayloadsOnly?: boolean;
+  results?: ScenarioSuiteResult[];
+  nextAction?: string;
 };
 
 type EvidencePackageStatus = {
@@ -386,6 +401,10 @@ export function ConsoleWorkspace() {
     state: "idle",
     message: "No live test has been run in this console session."
   });
+  const [scenarioSuiteStatus, setScenarioSuiteStatus] = React.useState<ScenarioSuiteStatus>({
+    state: "idle",
+    message: "Run the scenario suite to compare all built-in tests for the selected agent."
+  });
   const [evidencePackageStatus, setEvidencePackageStatus] = React.useState<EvidencePackageStatus>({
     state: "idle",
     message: "No evidence package has been generated in this console session."
@@ -501,6 +520,145 @@ export function ConsoleWorkspace() {
       });
     }
   }, [bridgeBaseUrl, selectedAgent, selectedScenario, sessionToken]);
+
+  const handleRunScenarioSuite = React.useCallback(async () => {
+    setScenarioSuiteStatus({
+      state: "running",
+      message: `Running all privacy scenarios for ${selectedAgent.name}.`,
+      agentId: selectedAgent.id
+    });
+
+    if (!bridgeBaseUrl) {
+      const fixtureSuite = fixtureScenarioSuite(selectedAgent);
+      setScenarioSuiteStatus({
+        state: "demo",
+        message: "Demo suite prepared from fixture metadata. Connect the local API bridge to create encrypted traces for every scenario.",
+        suiteId: fixtureSuite.suite_id,
+        agentId: fixtureSuite.agent_id,
+        overallStatus: fixtureSuite.overall_status,
+        scenarioCount: fixtureSuite.scenario_count,
+        totalFindings: fixtureSuite.total_findings,
+        safePayloadsOnly: fixtureSuite.safe_payloads_only,
+        results: fixtureSuite.results,
+        nextAction: fixtureSuite.next_action
+      });
+      return;
+    }
+
+    try {
+      const client = new LocalApiBridgeClient(bridgeBaseUrl, sessionToken);
+      const result = await client.runScenarioSuite(selectedAgent.id);
+      if (!result) {
+        throw new Error("Scenario suite endpoint unavailable");
+      }
+      setScenarioSuiteStatus({
+        state: "ready",
+        message: "Scenario suite captured as encrypted local traces.",
+        suiteId: result.suite_id,
+        agentId: result.agent_id,
+        overallStatus: result.overall_status,
+        scenarioCount: result.scenario_count,
+        totalFindings: result.total_findings,
+        safePayloadsOnly: result.safe_payloads_only,
+        results: result.results,
+        nextAction: result.next_action
+      });
+    } catch {
+      setScenarioSuiteStatus({
+        state: "error",
+        message: "The local bridge could not run the scenario suite. No private payload was requested.",
+        agentId: selectedAgent.id
+      });
+    }
+  }, [bridgeBaseUrl, selectedAgent, sessionToken]);
+
+  const handleOpenSuiteResult = React.useCallback(async (result: ScenarioSuiteResult) => {
+    const scenario = liveTestScenarios.find((item) => item.id === result.scenario_id) ?? selectedScenario;
+    const nextStatus: LiveRunStatus = {
+      state: "ready",
+      message: "Suite result opened from safe run metadata.",
+      agentId: selectedAgent.id,
+      scenarioId: scenario.id,
+      scenarioName: result.scenario_name,
+      resultStatus: result.status,
+      resultSummary: result.summary,
+      expectedResult: result.expected_result,
+      encryptedPayloads: result.encrypted_payloads,
+      safePayloadsOnly: result.safe_payloads_only,
+      runId: result.run_id,
+      traceId: result.trace_id,
+      spanCount: 4,
+      findings: result.finding_count
+    };
+
+    if (!bridgeBaseUrl || scenarioSuiteStatus.state === "demo") {
+      setLiveRunStatus(nextStatus);
+      setSnapshot((previous) => ({
+        ...previous,
+        runs: [
+          {
+            run_id: result.run_id,
+            trace_id: result.trace_id,
+            agent_name: selectedAgent.id,
+            status: result.status,
+            span_count: 4,
+            created_at: new Date().toISOString()
+          },
+          ...previous.runs.filter((run) => run.run_id !== result.run_id)
+        ],
+        source: previous.source
+      }));
+      setEvidencePackageStatus({
+        state: "idle",
+        message: "Suite result opened. Generate an evidence package from the proof step."
+      });
+      setActiveStep("flow");
+      return;
+    }
+
+    setLiveRunStatus({
+      ...nextStatus,
+      state: "running",
+      message: "Opening suite result from local safe metadata."
+    });
+
+    try {
+      const client = new LocalApiBridgeClient(bridgeBaseUrl, sessionToken);
+      const opened = await client.loadRunEvidence(result.run_id);
+      if (!opened) {
+        throw new Error("Suite run evidence unavailable");
+      }
+      setSnapshot((previous) => ({
+        ...previous,
+        runs: [
+          opened.run,
+          ...previous.runs.filter((run) => run.run_id !== opened.run.run_id)
+        ],
+        safeTrace: opened.safe_trace,
+        privacyMap: opened.privacy_map,
+        replayComparison: opened.replay_comparison,
+        source: "local-api"
+      }));
+      setLiveRunStatus({
+        ...nextStatus,
+        state: "ready",
+        spanCount: opened.run.span_count || opened.safe_trace.spans.length,
+        message: "Suite result opened from local safe metadata."
+      });
+      setExportState(`${result.run_id}-safe-trace.json ready`);
+      setEvidencePackageStatus({
+        state: "idle",
+        message: "Suite result opened. Generate an evidence package from the proof step."
+      });
+      setActiveStep("flow");
+    } catch {
+      setLiveRunStatus({
+        ...nextStatus,
+        state: "error",
+        message: "The local bridge could not open this suite result."
+      });
+    }
+  }, [bridgeBaseUrl, scenarioSuiteStatus.state, selectedAgent.id, selectedScenario, sessionToken]);
 
   const handleCreateEvidencePackage = React.useCallback(async () => {
     const policyResponse = policyResponsePayload(selectedPolicyDecision);
@@ -744,7 +902,10 @@ export function ConsoleWorkspace() {
               selectedScenario={selectedScenario}
               setSelectedScenarioId={setSelectedScenarioId}
               liveRunStatus={liveRunStatus}
+              scenarioSuiteStatus={scenarioSuiteStatus}
               onRunLiveAgent={handleRunLiveAgent}
+              onRunScenarioSuite={handleRunScenarioSuite}
+              onOpenSuiteResult={handleOpenSuiteResult}
             />
           ) : null}
           {activeStep === "agents" ? (
@@ -805,7 +966,10 @@ function OverviewStep({
   selectedScenario,
   setSelectedScenarioId,
   liveRunStatus,
-  onRunLiveAgent
+  scenarioSuiteStatus,
+  onRunLiveAgent,
+  onRunScenarioSuite,
+  onOpenSuiteResult
 }: {
   setActiveStep: (step: StepId) => void;
   snapshot: ConsoleSnapshot;
@@ -814,7 +978,10 @@ function OverviewStep({
   selectedScenario: LiveTestScenario;
   setSelectedScenarioId: (id: string) => void;
   liveRunStatus: LiveRunStatus;
+  scenarioSuiteStatus: ScenarioSuiteStatus;
   onRunLiveAgent: () => void;
+  onRunScenarioSuite: () => void;
+  onOpenSuiteResult: (result: ScenarioSuiteResult) => void;
 }) {
   const totals = {
     runs: agents.reduce((sum, agent) => sum + agent.runsToday, 0),
@@ -876,14 +1043,29 @@ function OverviewStep({
         setSelectedAgentId={setSelectedAgentId}
       />
 
+      <ScenarioSuitePanel
+        suiteStatus={scenarioSuiteStatus}
+        onOpenResult={onOpenSuiteResult}
+      />
+
       <div className="button-row button-row-between">
-        <Button
-          onClick={onRunLiveAgent}
-          disabled={liveRunStatus.state === "running"}
-        >
-          <PlayCircle className="h-4 w-4" aria-hidden="true" />
-          {liveRunStatus.state === "running" ? "Running test" : "Run live agent test"}
-        </Button>
+        <div className="button-row">
+          <Button
+            onClick={onRunLiveAgent}
+            disabled={liveRunStatus.state === "running" || scenarioSuiteStatus.state === "running"}
+          >
+            <PlayCircle className="h-4 w-4" aria-hidden="true" />
+            {liveRunStatus.state === "running" ? "Running test" : "Run live agent test"}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={onRunScenarioSuite}
+            disabled={liveRunStatus.state === "running" || scenarioSuiteStatus.state === "running"}
+          >
+            <PlayCircle className="h-4 w-4" aria-hidden="true" />
+            {scenarioSuiteStatus.state === "running" ? "Running suite" : "Run scenario suite"}
+          </Button>
+        </div>
         <Button variant="outline" onClick={() => setActiveStep("agents")}>
           Start with an agent
           <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -953,6 +1135,63 @@ function AgentTestMatrix({
           );
         })}
       </div>
+    </section>
+  );
+}
+
+function ScenarioSuitePanel({
+  suiteStatus,
+  onOpenResult
+}: {
+  suiteStatus: ScenarioSuiteStatus;
+  onOpenResult: (result: ScenarioSuiteResult) => void;
+}) {
+  return (
+    <section className="suite-panel" aria-label="Scenario suite results">
+      <div className="suite-header">
+        <div>
+          <div className="eyebrow">Scenario suite</div>
+          <h3>{suiteStatus.suiteId ?? "Not run yet"}</h3>
+          <p>{suiteStatus.message}</p>
+        </div>
+        <Badge tone={suiteStatus.state === "ready" || suiteStatus.state === "demo" ? "green" : suiteStatus.state === "error" ? "amber" : "blue"}>
+          {suiteStatus.overallStatus ?? suiteStatus.state}
+        </Badge>
+      </div>
+      <div className="suite-summary">
+        <ReportMetric label="Scenarios" value={formatCount(suiteStatus.scenarioCount, "scenario")} detail="Built-in privacy tests" />
+        <ReportMetric label="Findings" value={formatCount(suiteStatus.totalFindings, "finding")} detail="Across suite runs" />
+        <ReportMetric
+          label="Browser payload view"
+          value={suiteStatus.safePayloadsOnly ? "Safe metadata only" : "Pending"}
+          detail="No plaintext payloads"
+        />
+      </div>
+      {suiteStatus.results?.length ? (
+        <div className="suite-results">
+          {suiteStatus.results.map((result) => (
+            <div key={result.scenario_id} className="suite-result-row">
+              <div>
+                <strong>{result.scenario_name}</strong>
+                <small>{result.expected_result}</small>
+              </div>
+              <Badge tone={result.status === "passed" ? "green" : "amber"}>{result.status.replace("_", " ")}</Badge>
+              <div>
+                <strong>{formatCount(result.finding_count, "finding")}</strong>
+                <small>{result.run_id}</small>
+              </div>
+              <div>
+                <strong>{formatCount(result.encrypted_payloads, "payload")}</strong>
+                <small>{result.safe_payloads_only ? "Safe metadata only" : "Review payload handling"}</small>
+              </div>
+              <Button variant="outline" onClick={() => onOpenResult(result)}>
+                Open result
+              </Button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {suiteStatus.nextAction ? <p className="suite-next-action">{suiteStatus.nextAction}</p> : null}
     </section>
   );
 }
@@ -1315,6 +1554,11 @@ function CustomerReportPanel({ report }: { report: CustomerVerificationReport })
       </div>
 
       <div className="customer-report-metrics">
+        <ReportMetric
+          label="Readiness score"
+          value={String(report.scorecard.score)}
+          detail={report.scorecard.status.replace("_", " ")}
+        />
         <ReportMetric label="Verification" value={report.verification.status} detail="Saved package hash" />
         <ReportMetric
           label="Plaintext payloads"
@@ -1331,6 +1575,24 @@ function CustomerReportPanel({ report }: { report: CustomerVerificationReport })
           value={formatNumber(report.privacy_summary.finding_count)}
           detail="Policy review items"
         />
+      </div>
+
+      <div className="scorecard-panel" aria-label="Privacy readiness scorecard">
+        <div>
+          <div className="eyebrow">Privacy readiness</div>
+          <h4>{report.scorecard.summary}</h4>
+        </div>
+        <div className="scorecard-checks">
+          {report.scorecard.checks.map((check) => (
+            <div key={check.id} className="scorecard-check">
+              <Badge tone={scorecardTone(check.status)}>{check.status}</Badge>
+              <div>
+                <strong>{check.label}</strong>
+                <small>{check.detail}</small>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="customer-report-grid">
@@ -1785,6 +2047,7 @@ function fixtureCustomerReport(
       requires_policy_commit: true,
       blocks_plaintext_payloads: true
     },
+    scorecard: fixtureCustomerScorecard(policyDecision, snapshot),
     privacy_summary: {
       destination_count: snapshot.privacyMap.destinations.length,
       finding_count: snapshot.privacyMap.findings.length,
@@ -1802,6 +2065,85 @@ function fixtureCustomerReport(
       findings: destination.findings,
       actions: destination.actions
     }))
+  };
+}
+
+function fixtureCustomerScorecard(policyDecision: PolicyDecisionOption, snapshot: ConsoleSnapshot): CustomerVerificationReport["scorecard"] {
+  const reviewPolicy = policyDecision.id === "allow";
+  const hasSafeEvidence = snapshot.safeTrace.content_hashes.length > 0 && snapshot.safeTrace.redaction_markers.length > 0;
+  const reviewCount = (reviewPolicy ? 1 : 0) + (hasSafeEvidence ? 0 : 1);
+  const score = Math.max(0, 100 - reviewCount * 10);
+  return {
+    score,
+    status: score >= 90 ? "ready" : "needs_review",
+    summary: score >= 90 ? "Ready for controlled customer review." : "Review remaining controls before customer sharing.",
+    checks: [
+      {
+        id: "artifact_integrity",
+        label: "Evidence package hash verified",
+        status: "pass",
+        detail: "demo"
+      },
+      {
+        id: "plaintext_exclusion",
+        label: "Plaintext payloads excluded",
+        status: "pass",
+        detail: "Prompts, documents, outputs, tool bodies, secrets, and user identifiers are excluded."
+      },
+      {
+        id: "destination_control",
+        label: "High-risk egress controlled",
+        status: reviewPolicy ? "review" : "pass",
+        detail: `${snapshot.privacyMap.findings.length} findings with policy action ${policyDecision.id}.`
+      },
+      {
+        id: "ci_gate",
+        label: "CI policy gate ready",
+        status: policyDecision.id === "allow" ? "review" : "pass",
+        detail: policyDecision.ciStatus
+      },
+      {
+        id: "evidence_completeness",
+        label: "Hashes and redaction markers retained",
+        status: hasSafeEvidence ? "pass" : "review",
+        detail: `${snapshot.safeTrace.content_hashes.length} content hashes and ${snapshot.safeTrace.redaction_markers.length} redaction markers.`
+      }
+    ]
+  };
+}
+
+function fixtureScenarioSuite(agent: AgentRecord): ScenarioSuiteRunResult {
+  const results: ScenarioSuiteResult[] = liveTestScenarios.map((scenario) => {
+    const outcome = scenarioOutcome(agent, scenario);
+    const findingCount = outcome.label === "Expected pass" ? 0 : Math.max(1, agent.findings);
+    return {
+      scenario_id: scenario.id,
+      scenario_name: scenario.title,
+      expected_result: scenario.expectedResult,
+      data_classes: scenario.dataClasses,
+      destination_id: agent.destination,
+      status: findingCount ? "needs_review" : "passed",
+      summary: `${findingCount} policy ${findingCount === 1 ? "finding" : "findings"} across 1 destination.`,
+      run_id: `run_suite_${agent.id}_${scenario.id}_demo`,
+      trace_id: `trc_suite_${agent.id}_${scenario.id}_demo`,
+      finding_count: findingCount,
+      encrypted_payloads: 4,
+      safe_payloads_only: true
+    };
+  });
+  const totalFindings = results.reduce((sum, result) => sum + result.finding_count, 0);
+  return {
+    ok: true,
+    suite_id: `suite_${agent.id}_demo`,
+    agent_id: agent.id,
+    agent_name: agent.name,
+    created_at: new Date().toISOString(),
+    overall_status: totalFindings ? "needs_review" : "passed",
+    scenario_count: results.length,
+    total_findings: totalFindings,
+    safe_payloads_only: true,
+    results,
+    next_action: "Open the highest-finding scenario, choose a policy control, and export customer evidence."
   };
 }
 
@@ -1907,6 +2249,19 @@ function customerReportStatusLabel(report: CustomerVerificationReport) {
     return `${report.verification.status} for ${report.customer_summary.audience}`;
   }
   return `${report.customer_summary.status}: ${report.verification.status}`;
+}
+
+function scorecardTone(status: string): "neutral" | "green" | "amber" | "red" | "blue" {
+  if (status === "pass") {
+    return "green";
+  }
+  if (status === "fail") {
+    return "red";
+  }
+  if (status === "review") {
+    return "amber";
+  }
+  return "blue";
 }
 
 function talkTrack(step: StepId, selectedAgent: AgentRecord) {
