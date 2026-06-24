@@ -60,7 +60,7 @@ The console demo should prove six things in under three minutes:
 3. The test creates encrypted trace payloads locally.
 4. The browser receives safe metadata only: workflow timeline, hashes, data classes, destinations, span counts, token counts, redaction markers, and policy decisions.
 5. The reviewer can choose a policy control: allow, allow selected fields, redact, require human approval, or block.
-6. The final evidence package, readiness scorecard, and customer verification report are shareable with a teammate, security reviewer, or customer without plaintext prompts, documents, model outputs, tool payloads, secrets, or user identifiers.
+6. The final release gate, evidence package, readiness scorecard, and customer verification report are shareable with a teammate, security reviewer, or customer without plaintext prompts, documents, model outputs, tool payloads, secrets, or user identifiers.
 
 ## Demo Talk Track
 
@@ -71,7 +71,7 @@ Use this sequence:
 3. "The local bridge captures encrypted payloads, but the UI only sees safe metadata."
 4. "Now I can see the safe timeline, where data went, which classes moved, and what policy decided."
 5. "I can choose the control: allow selected fields, redact, require approval, or block."
-6. "Finally, I can export a safe trace, verify the saved package hash, and build a customer report with a privacy readiness scorecard for enterprise review."
+6. "Finally, I can export a safe trace, verify the saved package hash, and get a release gate plus customer report for enterprise review."
 
 ## Product Principles
 
@@ -80,6 +80,7 @@ Use this sequence:
 - Keep raw payload reveal outside the primary path.
 - Make run IDs, trace IDs, span counts, finding counts, and destination status visible because they feel concrete.
 - Treat CI gates and version-controlled policy as part of the product, not as afterthoughts.
+- Make the product answer "can this agent ship?" with a release gate that shows blocking findings, missing proof, and the next control to apply.
 - Make the console useful in fixture mode, but clearly distinguish fixture mode from a bridge-connected live run.
 
 ## Near-Term Product Bets

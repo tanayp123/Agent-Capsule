@@ -63,10 +63,12 @@ Use the console in this order:
 3. Choose a policy response: allow destination, allow selected fields, redact fields, require human approval, or block tool.
 4. Review the policy patch preview and CI gate summary.
 5. Click `Share safe proof`.
-6. Click `Prepare safe trace`.
-7. Click `Generate evidence package`.
-8. Click `Verify saved package`.
-9. Click `Build customer report`.
+6. Review the release gate. It should explain whether the agent is blocked, ready for review, or ready for a controlled merge.
+7. Click `Prepare safe trace`.
+8. Click `Generate evidence package`.
+9. Click `Verify saved package`.
+10. Click `Build customer report`.
+11. Confirm the release gate changes to `Ready for controlled merge` when scenario coverage, policy control, verified evidence, and customer proof are all present.
 
 The live test endpoint writes encrypted payload sidecars locally, then returns only safe trace metadata and the privacy map to the browser.
 
@@ -103,7 +105,7 @@ npm run test:ui
 - Start here: show the company workspace, ten agents, open privacy items, current run evidence, scenario-aware live testing, and a company test matrix ranked by risk, finding load, and scenario fit.
 - Pick an agent: choose one of the company agents to inspect.
 - See where data went: inspect destination, data classes, policy action, run ID, trace ID, span count, findings, safe execution timeline, destination findings, policy response options, patch preview, and CI gate summary.
-- Export safe evidence: prepare a safe trace and review release/customer proof surfaces that include the selected policy response.
+- Export safe evidence: prepare a safe trace, review the release gate, generate an evidence package, verify the saved hash, and build the customer-ready report that includes the selected policy response.
 - Local settings: advanced bridge, session-token, and local reveal controls are available but outside the primary demo path.
 
 ## Local API Bridge

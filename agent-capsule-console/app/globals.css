@@ -182,6 +182,7 @@ p {
 .policy-preview,
 .ci-gate-card,
 .evidence-summary,
+.release-gate-panel,
 .evidence-package-panel,
 .proof-card,
 .settings-panel,
@@ -201,6 +202,7 @@ p {
 .policy-preview,
 .ci-gate-card,
 .evidence-summary,
+.release-gate-panel,
 .evidence-package-panel,
 .proof-card,
 .settings-panel,
@@ -933,6 +935,75 @@ p {
   font-size: 17px;
 }
 
+.release-gate-panel {
+  display: grid;
+  gap: 14px;
+  border-color: hsl(var(--ring) / 0.34);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72), 0 18px 44px rgba(15, 23, 42, 0.08);
+}
+
+.release-gate-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+}
+
+.release-gate-header h3 {
+  font-size: 22px;
+}
+
+.release-gate-header p {
+  margin-top: 6px;
+}
+
+.release-gate-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.release-gate-facts .report-metric {
+  border-bottom: 0;
+}
+
+.release-gate-checks {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.release-gate-check {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 10px 0;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.release-gate-check:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.release-gate-check strong {
+  display: block;
+  color: hsl(var(--foreground));
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.release-gate-check small {
+  display: block;
+  margin-top: 4px;
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
 .evidence-package-panel {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(220px, 0.8fr) minmax(190px, 0.65fr);
@@ -1263,6 +1334,7 @@ p {
   .suite-summary,
   .suite-result-row,
   .scorecard-panel,
+  .release-gate-facts,
   .policy-action-grid,
   .customer-report-metrics,
   .proof-grid {
@@ -1287,6 +1359,8 @@ p {
   .policy-review-panel,
   .policy-result-grid,
   .evidence-summary,
+  .release-gate-header,
+  .release-gate-facts,
   .customer-report-grid,
   .customer-report-metrics,
   .scorecard-panel,

@@ -127,6 +127,24 @@ type PolicyDecisionOption = {
   tone: "neutral" | "green" | "amber" | "red" | "blue";
 };
 
+type ReleaseGateCheckStatus = "pass" | "review" | "fail";
+
+type ReleaseGateStatus = "ready" | "review" | "blocked";
+
+type ReleaseGateCheck = {
+  label: string;
+  status: ReleaseGateCheckStatus;
+  detail: string;
+};
+
+type ReleaseGate = {
+  status: ReleaseGateStatus;
+  label: string;
+  summary: string;
+  tone: "green" | "amber" | "red";
+  checks: ReleaseGateCheck[];
+};
+
 const steps: Array<{ id: StepId; title: string; plainTitle: string; helper: string }> = [
   {
     id: "overview",
@@ -943,6 +961,7 @@ export function ConsoleWorkspace() {
               currentRun={currentRun}
               snapshot={snapshot}
               policyDecision={selectedPolicyDecision}
+              scenarioSuiteStatus={scenarioSuiteStatus}
               evidencePackageStatus={evidencePackageStatus}
               onCreateEvidencePackage={handleCreateEvidencePackage}
               onVerifyEvidencePackage={handleVerifyEvidencePackage}
@@ -1388,6 +1407,7 @@ function ProofStep({
   currentRun,
   snapshot,
   policyDecision,
+  scenarioSuiteStatus,
   evidencePackageStatus,
   onCreateEvidencePackage,
   onVerifyEvidencePackage,
@@ -1400,6 +1420,7 @@ function ProofStep({
   currentRun: RunSummary;
   snapshot: ConsoleSnapshot;
   policyDecision: PolicyDecisionOption;
+  scenarioSuiteStatus: ScenarioSuiteStatus;
   evidencePackageStatus: EvidencePackageStatus;
   onCreateEvidencePackage: () => void;
   onVerifyEvidencePackage: () => void;
@@ -1408,6 +1429,8 @@ function ProofStep({
   setExportState: (state: string) => void;
   setActiveStep: (step: StepId) => void;
 }) {
+  const releaseGate = buildReleaseGate(policyDecision, scenarioSuiteStatus, evidencePackageStatus);
+
   return (
     <div className="stage-content">
       <StageHeader
@@ -1448,6 +1471,49 @@ function ProofStep({
           <p>Evidence package includes run ID, trace ID, content hashes, redaction markers, policy decision, and safe trace metadata.</p>
         </div>
       </div>
+      <section className="release-gate-panel" aria-label="Release gate">
+        <div className="release-gate-header">
+          <div>
+            <div className="eyebrow">Release gate</div>
+            <h3>{releaseGate.label}</h3>
+            <p>{releaseGate.summary}</p>
+          </div>
+          <Badge tone={releaseGate.tone}>{releaseGate.status}</Badge>
+        </div>
+        <div className="release-gate-facts">
+          <ReportMetric
+            label="Policy action"
+            value={policyDecision.title}
+            detail={policyDecision.id === "allow" ? "Full destination allowed" : "Control recorded for CI"}
+          />
+          <ReportMetric
+            label="Scenario suite"
+            value={formatCount(scenarioSuiteStatus.scenarioCount, "scenario")}
+            detail={`${formatCount(scenarioSuiteStatus.totalFindings, "finding")} reviewed`}
+          />
+          <ReportMetric
+            label="Evidence"
+            value={evidencePackageStatus.packageId ? "Generated" : "Pending"}
+            detail={evidencePackageStatus.verificationStatus ?? "Hash not verified yet"}
+          />
+          <ReportMetric
+            label="Customer proof"
+            value={evidencePackageStatus.customerReport ? "Ready" : "Pending"}
+            detail={evidencePackageStatus.customerReportStatus ?? "Report not built yet"}
+          />
+        </div>
+        <div className="release-gate-checks">
+          {releaseGate.checks.map((check) => (
+            <div key={check.label} className="release-gate-check">
+              <Badge tone={releaseGateCheckTone(check.status)}>{check.status}</Badge>
+              <div>
+                <strong>{check.label}</strong>
+                <small>{check.detail}</small>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
       <div className="evidence-package-panel">
         <div>
           <div className="eyebrow">Evidence package</div>
@@ -1870,6 +1936,99 @@ function LiveInspectionPanel({
       </section>
     </div>
   );
+}
+
+function buildReleaseGate(
+  policyDecision: PolicyDecisionOption,
+  scenarioSuiteStatus: ScenarioSuiteStatus,
+  evidencePackageStatus: EvidencePackageStatus
+): ReleaseGate {
+  const scenarioSuiteReviewed = Boolean(
+    scenarioSuiteStatus.results?.length && (scenarioSuiteStatus.state === "ready" || scenarioSuiteStatus.state === "demo")
+  );
+  const findingCount = scenarioSuiteStatus.totalFindings ?? 0;
+  const evidenceGenerated = Boolean(evidencePackageStatus.packageId);
+  const hashVerified =
+    evidencePackageStatus.verificationStatus === "verified" ||
+    evidencePackageStatus.verificationStatus === "demo";
+  const customerReportReady = Boolean(evidencePackageStatus.customerReport);
+  const unscopedAllow = policyDecision.id === "allow" && findingCount > 0;
+
+  const checks: ReleaseGateCheck[] = [
+    {
+      label: "Scenario suite reviewed",
+      status: scenarioSuiteReviewed ? "pass" : "review",
+      detail: scenarioSuiteReviewed
+        ? `${formatCount(scenarioSuiteStatus.scenarioCount, "scenario")} covered ${formatCount(findingCount, "finding")}.`
+        : "Run the scenario suite so the ship decision is based on more than one trace."
+    },
+    {
+      label: "Policy control selected",
+      status: unscopedAllow ? "fail" : "pass",
+      detail: unscopedAllow
+        ? "High-risk findings cannot ship with a full allow action."
+        : `${policyDecision.title} is recorded for the version-controlled policy patch.`
+    },
+    {
+      label: "Evidence package generated",
+      status: evidencePackageStatus.state === "error" ? "fail" : evidenceGenerated ? "pass" : "review",
+      detail: evidenceGenerated
+        ? `${evidencePackageStatus.packageId} contains safe trace metadata and policy response.`
+        : "Generate the evidence package before sharing or merging."
+    },
+    {
+      label: "Package hash verified",
+      status: evidencePackageStatus.state === "error" ? "fail" : hashVerified ? "pass" : "review",
+      detail: hashVerified
+        ? `Verification status: ${evidencePackageStatus.verificationStatus}.`
+        : "Verify the saved package hash against its sidecar."
+    },
+    {
+      label: "Customer report ready",
+      status: customerReportReady ? "pass" : "review",
+      detail: customerReportReady
+        ? evidencePackageStatus.customerReportHeadline ?? "Customer-safe report is ready."
+        : "Build the report before sending proof to a security buyer."
+    }
+  ];
+
+  if (checks.some((check) => check.status === "fail")) {
+    return {
+      status: "blocked",
+      label: "Merge blocked",
+      summary: "The run has unresolved high-risk egress or an unsafe policy action. Choose a narrower control before this can ship.",
+      tone: "red",
+      checks
+    };
+  }
+
+  if (checks.every((check) => check.status === "pass")) {
+    return {
+      status: "ready",
+      label: "Ready for controlled merge",
+      summary: "Scenario coverage, policy control, verified evidence, and customer-safe proof are all in place.",
+      tone: "green",
+      checks
+    };
+  }
+
+  return {
+    status: "review",
+    label: "Review before merge",
+    summary: "The privacy decision is mostly assembled. Complete the remaining proof steps before using this in a customer or CI review.",
+    tone: "amber",
+    checks
+  };
+}
+
+function releaseGateCheckTone(status: ReleaseGateCheckStatus): "green" | "amber" | "red" {
+  if (status === "pass") {
+    return "green";
+  }
+  if (status === "fail") {
+    return "red";
+  }
+  return "amber";
 }
 
 function ProofCard({
