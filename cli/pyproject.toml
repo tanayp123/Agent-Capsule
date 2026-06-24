@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-capsule-cli"
+version = "0.1.0"
+description = "Command-line interface for Agent Capsule."
+requires-python = ">=3.10"
+readme = "README.md"
+dependencies = [
+  "agent-capsule==0.1.0",
+]
+
+[project.scripts]
+capsule = "agent_capsule_cli.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+

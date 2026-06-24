@@ -1,0 +1,67 @@
+{
+  "replay_version": 1,
+  "source_trace_id": "trc_failed_model_001",
+  "source_run_id": "run_failed_model_001",
+  "created_at": "2026-06-23T18:07:00Z",
+  "mode": "structural",
+  "payload_policy": {
+    "raw_payloads_exported": false,
+    "encrypted_payloads_decrypted": false,
+    "plaintext_payloads_used": 0
+  },
+  "workflow": {
+    "span_count": 2,
+    "root_span_ids": [
+      "spn_root"
+    ]
+  },
+  "destinations": [
+    {
+      "id": "model_provider",
+      "type": "model_provider",
+      "domain": "api.model.example",
+      "risk": "medium",
+      "declared_in_policy": true,
+      "observed_data_classes": [
+        "document_text",
+        "prompt_content"
+      ]
+    }
+  ],
+  "spans": [
+    {
+      "source_span_id": "spn_root",
+      "parent_span_id": null,
+      "component_type": "workflow",
+      "component_name": "claim-triage",
+      "destination_id": null,
+      "status": "error",
+      "simulated_duration_ms": 3000,
+      "payload_size_bytes": 6120,
+      "token_count": null,
+      "content_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "policy_decision_action": "not_evaluated",
+      "policy_decision_reason": "workflow span",
+      "error_type": "ModelTimeout",
+      "replay_action": "structural_replay",
+      "payload_references": []
+    },
+    {
+      "source_span_id": "spn_model_timeout",
+      "parent_span_id": "spn_root",
+      "component_type": "model_call",
+      "component_name": "classify-claim",
+      "destination_id": "model_provider",
+      "status": "error",
+      "simulated_duration_ms": 2000,
+      "payload_size_bytes": 3072,
+      "token_count": 1024,
+      "content_hash": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "policy_decision_action": "allow",
+      "policy_decision_reason": "destination declared and data classes allowed",
+      "error_type": "ModelTimeout",
+      "replay_action": "structural_replay",
+      "payload_references": []
+    }
+  ]
+}

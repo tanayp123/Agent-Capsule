@@ -1,0 +1,81 @@
+{
+  "safe_trace_version": 1,
+  "source_trace_id": "trc_failed_model_001",
+  "created_at": "2026-06-23T18:06:00Z",
+  "created_by": "local-developer",
+  "redaction_profile": "team_debug",
+  "workflow_graph": {
+    "nodes": [
+      {
+        "id": "spn_root",
+        "label": "claim-triage",
+        "component_type": "workflow"
+      },
+      {
+        "id": "spn_model_timeout",
+        "label": "classify-claim",
+        "component_type": "model_call"
+      }
+    ],
+    "edges": [
+      {
+        "from": "spn_root",
+        "to": "spn_model_timeout"
+      }
+    ]
+  },
+  "spans": [
+    {
+      "span_id": "spn_root",
+      "component_type": "workflow",
+      "component_name": "claim-triage",
+      "duration_ms": 3000,
+      "payload_size_bytes": 6120,
+      "token_count": null,
+      "status": "error",
+      "error_summary": "ModelTimeout in child span",
+      "policy_decision": "not_evaluated",
+      "redaction_markers": []
+    },
+    {
+      "span_id": "spn_model_timeout",
+      "component_type": "model_call",
+      "component_name": "classify-claim",
+      "duration_ms": 2000,
+      "payload_size_bytes": 3072,
+      "token_count": 1024,
+      "status": "error",
+      "error_summary": "model call timed out after 30 seconds",
+      "policy_decision": "allow",
+      "redaction_markers": [
+        "hashed:prompt_content",
+        "hashed:document_text"
+      ]
+    }
+  ],
+  "component_versions": {
+    "agent_capsule_sdk": "0.1.0",
+    "python": "3.10.14",
+    "model_client": "1.0.0"
+  },
+  "policy_decisions": [
+    {
+      "span_id": "spn_model_timeout",
+      "action": "allow",
+      "reason": "destination declared and data classes allowed"
+    }
+  ],
+  "content_hashes": [
+    "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+  ],
+  "redaction_markers": [
+    "hashed:prompt_content",
+    "hashed:document_text"
+  ],
+  "diagnostic_summary": {
+    "status": "error",
+    "failure_span_id": "spn_model_timeout",
+    "summary": "The model call timed out after receiving a redacted document payload."
+  }
+}

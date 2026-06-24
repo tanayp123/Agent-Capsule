@@ -1,0 +1,40 @@
+name: Agent Capsule Policy Gate
+
+on:
+  pull_request:
+
+jobs:
+  agent-capsule:
+    name: Privacy and release evidence
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run Agent Capsule CI check
+        shell: bash
+        run: |
+          set -euo pipefail
+          source ci/python-env.sh
+          export PYTHONPATH="$PWD/cli/src:$PYTHONPATH"
+          python3 -m agent_capsule_cli ci check \
+            --policy agent-capsule.policy.yaml \
+            --trace-dir .agent-capsule/traces \
+            --manifest .agent-capsule/manifests/capsule-manifest.json \
+            --release \
+            --annotation-format github \
+            --json | tee agent-capsule-ci.json
+
+      - name: Upload Agent Capsule report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-capsule-ci
+          path: agent-capsule-ci.json

@@ -1,0 +1,20 @@
+agent_capsule_policy:
+  image: python:3.11
+  stage: test
+  script:
+    - >
+      bash -lc 'set -euo pipefail;
+      source ci/python-env.sh;
+      export PYTHONPATH="$PWD/cli/src:$PYTHONPATH";
+      python3 -m agent_capsule_cli ci check
+      --policy agent-capsule.policy.yaml
+      --trace-dir .agent-capsule/traces
+      --manifest .agent-capsule/manifests/capsule-manifest.json
+      --release
+      --annotation-format gitlab
+      --json | tee agent-capsule-ci.json'
+  artifacts:
+    when: always
+    paths:
+      - agent-capsule-ci.json
+    expire_in: 7 days

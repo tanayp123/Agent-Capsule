@@ -1,0 +1,226 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentcapsule.dev/schemas/safe-trace.schema.json",
+  "title": "Agent Capsule Safe Trace",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "safe_trace_version",
+    "source_trace_id",
+    "created_at",
+    "created_by",
+    "redaction_profile",
+    "workflow_graph",
+    "spans",
+    "component_versions",
+    "policy_decisions",
+    "content_hashes",
+    "redaction_markers",
+    "diagnostic_summary"
+  ],
+  "properties": {
+    "safe_trace_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "source_trace_id": {
+      "type": "string",
+      "pattern": "^trc_[a-zA-Z0-9_-]+$"
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "created_by": {
+      "type": "string"
+    },
+    "redaction_profile": {
+      "type": "string",
+      "enum": [
+        "strict",
+        "team_debug",
+        "customer_support"
+      ]
+    },
+    "workflow_graph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nodes",
+        "edges"
+      ],
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "label",
+              "component_type"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "component_type": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "from",
+              "to"
+            ],
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "spans": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "span_id",
+          "component_type",
+          "component_name",
+          "duration_ms",
+          "payload_size_bytes",
+          "token_count",
+          "status",
+          "error_summary",
+          "policy_decision",
+          "redaction_markers"
+        ],
+        "properties": {
+          "span_id": {
+            "type": "string"
+          },
+          "component_type": {
+            "type": "string"
+          },
+          "component_name": {
+            "type": "string"
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "payload_size_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "token_count": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "status": {
+            "type": "string"
+          },
+          "error_summary": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "policy_decision": {
+            "type": "string"
+          },
+          "redaction_markers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "component_versions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "policy_decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "span_id",
+          "action",
+          "reason"
+        ],
+        "properties": {
+          "span_id": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "content_hashes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    },
+    "redaction_markers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "diagnostic_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "failure_span_id",
+        "summary"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "failure_span_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "summary": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

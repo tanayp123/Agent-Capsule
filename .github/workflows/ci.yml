@@ -1,0 +1,78 @@
+name: Agent Capsule CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  foundation:
+    name: Phase 0 Foundation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate repository foundation
+        run: bash ci/check-foundation.sh
+
+      - name: Validate shared schemas and fixtures
+        run: bash ci/check-phase1.sh
+
+      - name: Validate Python observe mode
+        run: bash ci/check-phase2.sh
+
+      - name: Validate encrypted trace store
+        run: bash ci/check-phase3.sh
+
+      - name: Validate CLI MVP
+        run: bash ci/check-phase4.sh
+
+      - name: Validate policy engine and privacy map
+        run: bash ci/check-phase5.sh
+
+      - name: Validate safe trace export
+        run: bash ci/check-phase6.sh
+
+      - name: Validate replay
+        run: bash ci/check-phase7.sh
+
+      - name: Validate Agent Capsule Console
+        run: bash ci/check-phase8.sh
+
+      - name: Validate Local API Bridge
+        run: bash ci/check-phase9.sh
+
+      - name: Validate Guard Mode
+        run: bash ci/check-phase10.sh
+
+      - name: Validate Capsule Build
+        run: bash ci/check-phase11.sh
+
+      - name: Validate CI/CD Integration
+        run: bash ci/check-phase12.sh
+
+      - name: Validate Multi-Language SDK Beta
+        run: bash ci/check-phase13.sh
+
+      - name: Validate Confidential Demo
+        run: bash ci/check-phase14.sh
+
+      - name: Validate Product Website
+        run: bash ci/check-phase15.sh
+
+      - name: Lint placeholder
+        run: echo "Lint jobs will be wired as implementation code lands."
+
+      - name: Type check placeholder
+        run: echo "Type checks will be wired per codebase as packages land."
+
+      - name: Unit test placeholder
+        run: echo "Unit tests will be wired per codebase as packages land."
+
+      - name: Schema validation status
+        run: echo "Phase 1 schema validation is handled by ci/check-phase1.sh."
+
+      - name: Build placeholder
+        run: echo "Build jobs will be wired per codebase as packages land."

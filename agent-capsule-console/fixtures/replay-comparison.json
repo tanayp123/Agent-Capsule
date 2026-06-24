@@ -1,0 +1,39 @@
+{
+  "comparison_version": 1,
+  "source_trace_id": "trc_failed_model_001",
+  "candidate_replay_source_trace_id": "trc_failed_model_001",
+  "status": "diverged",
+  "summary": {
+    "difference_count": 5,
+    "span_count": 2
+  },
+  "differences": [
+    {
+      "category": "span_structure",
+      "message": "span structure changed"
+    },
+    {
+      "category": "timing",
+      "span_id": "spn_model_timeout",
+      "message": "timing changed for span spn_model_timeout",
+      "expected": 2000,
+      "actual": 2500
+    },
+    {
+      "category": "token_counts",
+      "span_id": "spn_model_timeout",
+      "message": "token_counts changed for span spn_model_timeout",
+      "expected": 1024,
+      "actual": 1200
+    },
+    {
+      "category": "error_changes",
+      "span_id": "spn_model_timeout",
+      "message": "error_changes changed for span spn_model_timeout"
+    },
+    {
+      "category": "destination_changes",
+      "message": "destination set changed"
+    }
+  ]
+}

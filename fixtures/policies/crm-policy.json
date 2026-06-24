@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "agent": {
+    "name": "claims-triage",
+    "owner": "platform-team"
+  },
+  "destinations": {
+    "crm": {
+      "type": "external_tool",
+      "domain": "api.crm.example",
+      "risk": "high",
+      "allowed_data": [
+        "account_id",
+        "support_tier"
+      ],
+      "redact": [
+        "email",
+        "account_notes"
+      ],
+      "require_approval": [
+        "medical_information"
+      ]
+    },
+    "model_provider": {
+      "type": "model_provider",
+      "domain": "api.model.example",
+      "risk": "medium",
+      "allowed_data": [
+        "prompt_content",
+        "document_text",
+        "policy_number",
+        "incident_description"
+      ],
+      "redact": [
+        "secrets"
+      ],
+      "require_approval": [
+        "medical_information"
+      ]
+    }
+  },
+  "defaults": {
+    "undeclared_high_risk_egress": "block",
+    "undeclared_destination": "warn",
+    "secrets": "block"
+  }
+}

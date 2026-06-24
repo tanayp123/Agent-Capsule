@@ -1,0 +1,12 @@
+[project]
+name = "agent-capsule-local-api"
+version = "0.1.0"
+description = "Localhost-only Agent Capsule API bridge for the developer console."
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,41 @@
+{
+  "manifest_version": 1,
+  "agent_name": "claims-triage",
+  "agent_version": "0.1.0",
+  "language": "python",
+  "runtime_version": "3.10.14",
+  "sdk_version": "0.1.0",
+  "container_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+  "policy_hash": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+  "policy_version": 1,
+  "network_destinations": [
+    {
+      "id": "model_provider",
+      "type": "model_provider",
+      "domain": "api.model.example",
+      "risk": "medium"
+    },
+    {
+      "id": "crm",
+      "type": "external_tool",
+      "domain": "api.crm.example",
+      "risk": "high"
+    }
+  ],
+  "required_secrets": ["MODEL_PROVIDER_API_KEY", "CRM_API_KEY"],
+  "usage_meters": [
+    {
+      "name": "claim_count",
+      "unit": "claim"
+    },
+    {
+      "name": "model_tokens",
+      "unit": "token"
+    }
+  ],
+  "signature": {
+    "algorithm": "ed25519",
+    "key_id": "dev-key-001",
+    "present": true
+  }
+}

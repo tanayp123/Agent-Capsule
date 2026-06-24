@@ -1,0 +1,152 @@
+{
+  "conformance_version": 1,
+  "cases": [
+    {
+      "name": "declared_crm_redacts_email_and_notes",
+      "policy": "fixtures/policies/crm-policy.json",
+      "destination_id": "crm",
+      "destination_risk": "high",
+      "data_classes": [
+        "email",
+        "account_notes"
+      ],
+      "fields": [
+        "email",
+        "account_notes"
+      ],
+      "expected": {
+        "action": "redact",
+        "fields": [
+          "account_notes",
+          "email"
+        ],
+        "reason": "destination redaction rule matched"
+      }
+    },
+    {
+      "name": "declared_crm_allows_account_fields",
+      "policy": "fixtures/policies/crm-policy.json",
+      "destination_id": "crm",
+      "destination_risk": "high",
+      "data_classes": [
+        "account_id",
+        "support_tier"
+      ],
+      "fields": [
+        "account_id",
+        "support_tier"
+      ],
+      "expected": {
+        "action": "allow",
+        "fields": [
+          "account_id",
+          "support_tier"
+        ],
+        "reason": "destination declared and data allowed"
+      }
+    },
+    {
+      "name": "declared_crm_requires_approval_for_medical_information",
+      "policy": "fixtures/policies/crm-policy.json",
+      "destination_id": "crm",
+      "destination_risk": "high",
+      "data_classes": [
+        "medical_information"
+      ],
+      "fields": [
+        "medical_information"
+      ],
+      "expected": {
+        "action": "require_approval",
+        "fields": [
+          "medical_information"
+        ],
+        "reason": "destination approval rule matched"
+      }
+    },
+    {
+      "name": "declared_crm_allows_only_selected_fields",
+      "policy": "fixtures/policies/crm-policy.json",
+      "destination_id": "crm",
+      "destination_risk": "high",
+      "data_classes": [
+        "account_id",
+        "support_tier",
+        "customer_identifier"
+      ],
+      "fields": [
+        "account_id",
+        "support_tier",
+        "customer_identifier"
+      ],
+      "expected": {
+        "action": "allow_fields",
+        "fields": [
+          "account_id",
+          "support_tier"
+        ],
+        "reason": "destination allowlist excluded fields"
+      }
+    },
+    {
+      "name": "undeclared_high_risk_destination_blocks",
+      "policy": "fixtures/policies/restrictive-policy.json",
+      "destination_id": "external_ocr",
+      "destination_risk": "high",
+      "data_classes": [
+        "medical_information",
+        "document_text"
+      ],
+      "fields": [
+        "medical_information",
+        "document_text"
+      ],
+      "expected": {
+        "action": "block",
+        "fields": [
+          "document_text",
+          "medical_information"
+        ],
+        "reason": "undeclared high-risk egress"
+      }
+    },
+    {
+      "name": "undeclared_medium_risk_destination_warns",
+      "policy": "fixtures/policies/restrictive-policy.json",
+      "destination_id": "analytics",
+      "destination_risk": "medium",
+      "data_classes": [
+        "support_tier"
+      ],
+      "fields": [
+        "support_tier"
+      ],
+      "expected": {
+        "action": "warn",
+        "fields": [
+          "support_tier"
+        ],
+        "reason": "undeclared destination"
+      }
+    },
+    {
+      "name": "secrets_block_before_destination_rules",
+      "policy": "fixtures/policies/crm-policy.json",
+      "destination_id": "crm",
+      "destination_risk": "high",
+      "data_classes": [
+        "secrets"
+      ],
+      "fields": [
+        "api_key"
+      ],
+      "expected": {
+        "action": "block",
+        "fields": [
+          "api_key"
+        ],
+        "reason": "secrets default rule matched"
+      }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "agent": {
+    "name": "claims-triage",
+    "owner": "platform-team"
+  },
+  "destinations": {},
+  "defaults": {
+    "undeclared_high_risk_egress": "block",
+    "undeclared_destination": "warn",
+    "secrets": "block"
+  }
+}

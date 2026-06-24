@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentcapsule.dev/schemas/destination.schema.json",
+  "title": "Agent Capsule Destination",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "type",
+    "domain",
+    "provider",
+    "environment",
+    "risk",
+    "declared_in_policy",
+    "allowed_data_classes",
+    "observed_data_classes"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]*$"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "model_provider",
+        "external_tool",
+        "internal_service",
+        "database",
+        "retrieval_system",
+        "secrets_provider",
+        "human_approval"
+      ]
+    },
+    "domain": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "provider": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "local",
+        "development",
+        "staging",
+        "production",
+        "customer_cloud",
+        "hosted_confidential_demo"
+      ]
+    },
+    "risk": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ]
+    },
+    "declared_in_policy": {
+      "type": "boolean"
+    },
+    "allowed_data_classes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "observed_data_classes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

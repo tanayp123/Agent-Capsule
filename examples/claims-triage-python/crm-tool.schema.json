@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "policy_number": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "account_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "policy_number"
+  ]
+}

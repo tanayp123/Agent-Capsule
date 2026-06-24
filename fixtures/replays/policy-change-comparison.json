@@ -1,0 +1,19 @@
+{
+  "comparison_version": 1,
+  "source_trace_id": "trc_failed_model_001",
+  "candidate_replay_source_trace_id": "trc_failed_model_001",
+  "status": "diverged",
+  "summary": {
+    "difference_count": 1,
+    "span_count": 2
+  },
+  "differences": [
+    {
+      "category": "policy_decision_changes",
+      "span_id": "spn_model_timeout",
+      "message": "policy_decision_changes changed for span spn_model_timeout",
+      "expected": "allow",
+      "actual": "require_approval"
+    }
+  ]
+}

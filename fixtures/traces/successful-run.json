@@ -1,0 +1,93 @@
+{
+  "trace_schema_version": 1,
+  "trace_id": "trc_success_001",
+  "run_id": "run_success_001",
+  "agent": {
+    "name": "claims-triage",
+    "version": "0.1.0"
+  },
+  "mode": "observe",
+  "language": "python",
+  "runtime_version": "3.10.14",
+  "sdk_version": "0.1.0",
+  "created_at": "2026-06-23T18:00:00Z",
+  "spans": [
+    {
+      "span_id": "spn_root",
+      "parent_span_id": null,
+      "component_type": "workflow",
+      "component_name": "claim-triage",
+      "start_time": "2026-06-23T18:00:00Z",
+      "end_time": "2026-06-23T18:00:04Z",
+      "status": "ok",
+      "payload_size_bytes": 4812,
+      "token_count": null,
+      "content_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "data_classes": [
+        "policy_number",
+        "incident_description"
+      ],
+      "destination_id": null,
+      "policy_decision": {
+        "action": "not_evaluated",
+        "reason": "workflow span",
+        "policy_version": 1,
+        "fields": []
+      },
+      "error_summary": null,
+      "redaction_markers": []
+    },
+    {
+      "span_id": "spn_model",
+      "parent_span_id": "spn_root",
+      "component_type": "model_call",
+      "component_name": "classify-claim",
+      "start_time": "2026-06-23T18:00:01Z",
+      "end_time": "2026-06-23T18:00:03Z",
+      "status": "ok",
+      "payload_size_bytes": 2048,
+      "token_count": 812,
+      "content_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "data_classes": [
+        "prompt_content",
+        "document_text",
+        "policy_number"
+      ],
+      "destination_id": "model_provider",
+      "policy_decision": {
+        "action": "allow",
+        "reason": "destination declared and data classes allowed",
+        "policy_version": 1,
+        "fields": [
+          "prompt_content",
+          "document_text",
+          "policy_number"
+        ]
+      },
+      "error_summary": null,
+      "redaction_markers": []
+    }
+  ],
+  "destinations": [
+    {
+      "id": "model_provider",
+      "type": "model_provider",
+      "domain": "api.model.example",
+      "provider": "Example Model",
+      "environment": "production",
+      "risk": "medium",
+      "declared_in_policy": true,
+      "allowed_data_classes": [
+        "prompt_content",
+        "document_text",
+        "policy_number",
+        "incident_description"
+      ],
+      "observed_data_classes": [
+        "prompt_content",
+        "document_text",
+        "policy_number"
+      ]
+    }
+  ]
+}

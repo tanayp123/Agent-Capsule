@@ -1,0 +1,135 @@
+{
+  "trace_id": "trc_crm_review_001",
+  "run_id": "run_crm_review_001",
+  "policy_version": 1,
+  "destinations": [
+    {
+      "id": "crm",
+      "type": "external_tool",
+      "domain": "api.crm.example",
+      "provider": "Example CRM",
+      "environment": "production",
+      "declared_in_policy": false,
+      "destination_risk": "high",
+      "egress_risk": "high",
+      "observed_data_classes": [
+        "account_notes",
+        "email"
+      ],
+      "allowed_data_classes": [],
+      "span_count": 1,
+      "actions": [
+        "warn"
+      ],
+      "findings": [
+        "undeclared_destination",
+        "undeclared_high_risk_egress",
+        "warn"
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "kind": "undeclared_destination",
+      "severity": "warning",
+      "destination_id": "crm",
+      "risk": "high",
+      "data_classes": [
+        "account_notes",
+        "email"
+      ],
+      "message": "Destination crm is not declared in policy"
+    },
+    {
+      "kind": "undeclared_high_risk_egress",
+      "severity": "error",
+      "destination_id": "crm",
+      "risk": "high",
+      "data_classes": [
+        "account_notes",
+        "email"
+      ],
+      "message": "Undeclared high-risk egress remains for destination crm"
+    }
+  ],
+  "policy_suggestions": [
+    {
+      "destination_id": "crm",
+      "action": "allow",
+      "description": "Declare the destination and allow the observed data classes.",
+      "policy_patch": {
+        "crm": {
+          "type": "external_tool",
+          "domain": "api.crm.example",
+          "risk": "high",
+          "allowed_data": [
+            "account_notes",
+            "email"
+          ],
+          "redact": [],
+          "require_approval": []
+        }
+      }
+    },
+    {
+      "destination_id": "crm",
+      "action": "allow_fields",
+      "description": "Declare the destination and choose a smaller allowed_data list from observed classes.",
+      "policy_patch": {
+        "crm": {
+          "type": "external_tool",
+          "domain": "api.crm.example",
+          "risk": "high",
+          "allowed_data": [
+            "account_notes",
+            "email"
+          ],
+          "redact": [],
+          "require_approval": []
+        }
+      }
+    },
+    {
+      "destination_id": "crm",
+      "action": "redact",
+      "description": "Declare the destination but redact the observed data classes before egress.",
+      "policy_patch": {
+        "crm": {
+          "type": "external_tool",
+          "domain": "api.crm.example",
+          "risk": "high",
+          "allowed_data": [],
+          "redact": [
+            "account_notes",
+            "email"
+          ],
+          "require_approval": []
+        }
+      }
+    },
+    {
+      "destination_id": "crm",
+      "action": "require_approval",
+      "description": "Declare the destination and require human approval for the observed data classes.",
+      "policy_patch": {
+        "crm": {
+          "type": "external_tool",
+          "domain": "api.crm.example",
+          "risk": "high",
+          "allowed_data": [],
+          "redact": [],
+          "require_approval": [
+            "account_notes",
+            "email"
+          ]
+        }
+      }
+    },
+    {
+      "destination_id": "crm",
+      "action": "block",
+      "description": "Keep the destination undeclared or remove the tool call from the workflow.",
+      "policy_patch": {}
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+
+# Node
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# Java
+.gradle/
+target/
+*.class
+
+# Go
+bin/
+*.test
+
+# Rust
+target/
+Cargo.lock
+
+# Agent Capsule local runtime data
+.agent-capsule/
+*.trace
+*.safe-trace.json
+
+# Secrets and environment files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+

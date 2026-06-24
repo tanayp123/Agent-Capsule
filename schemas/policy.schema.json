@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentcapsule.dev/schemas/policy.schema.json",
+  "title": "Agent Capsule Policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "agent",
+    "destinations",
+    "defaults"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "owner"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        }
+      }
+    },
+    "destinations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "domain",
+          "risk",
+          "allowed_data",
+          "redact",
+          "require_approval"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "model_provider",
+              "external_tool",
+              "internal_service",
+              "database",
+              "retrieval_system",
+              "secrets_provider",
+              "human_approval"
+            ]
+          },
+          "domain": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "risk": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          },
+          "allowed_data": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "redact": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "require_approval": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "undeclared_high_risk_egress",
+        "undeclared_destination",
+        "secrets"
+      ],
+      "properties": {
+        "undeclared_high_risk_egress": {
+          "type": "string",
+          "enum": [
+            "block",
+            "warn"
+          ]
+        },
+        "undeclared_destination": {
+          "type": "string",
+          "enum": [
+            "block",
+            "warn"
+          ]
+        },
+        "secrets": {
+          "type": "string",
+          "enum": [
+            "block",
+            "require_approval"
+          ]
+        }
+      }
+    }
+  }
+}

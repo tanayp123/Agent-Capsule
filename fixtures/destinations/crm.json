@@ -1,0 +1,17 @@
+{
+  "id": "crm",
+  "type": "external_tool",
+  "domain": "api.crm.example",
+  "provider": "Example CRM",
+  "environment": "production",
+  "risk": "high",
+  "declared_in_policy": true,
+  "allowed_data_classes": [
+    "account_id",
+    "support_tier"
+  ],
+  "observed_data_classes": [
+    "email",
+    "account_notes"
+  ]
+}

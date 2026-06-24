@@ -1,0 +1,12 @@
+[project]
+name = "agent-capsule-policy-engine"
+version = "0.1.0"
+description = "Deterministic Agent Capsule policy evaluation and privacy-map generation."
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
