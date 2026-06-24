@@ -56,7 +56,7 @@ This creates a clearer buyer story than "another agent tracing tool":
 The console demo should prove six things in under three minutes:
 
 1. A company is running multiple agents across sensitive workflows.
-2. The user can choose a scenario, use the company test matrix to select a risky agent, and run one scenario or the full scenario suite, not only inspect static fixture data.
+2. The user can see a persistent workspace release verdict, choose a scenario, use the highest-risk CTA or company test matrix to select a risky agent, and run one scenario or the full scenario suite, not only inspect static fixture data.
 3. The test creates encrypted trace payloads locally.
 4. The browser receives safe metadata only: workflow timeline, hashes, data classes, destinations, span counts, token counts, redaction markers, and policy decisions.
 5. The reviewer can choose a policy control: allow, allow selected fields, redact, require human approval, or block.
@@ -67,11 +67,12 @@ The console demo should prove six things in under three minutes:
 Use this sequence:
 
 1. "This company has ten production-like agents touching claims, support, legal, finance, and risk workflows."
-2. "I can choose a scenario, see which agents are riskiest, and run one privacy test or the full scenario suite from the console."
-3. "The local bridge captures encrypted payloads, but the UI only sees safe metadata."
-4. "Now I can see the safe timeline, where data went, which classes moved, and what policy decided."
-5. "I can choose the control: allow selected fields, redact, require approval, or block."
-6. "Finally, I can export a safe trace, verify the saved package hash, and get a release gate plus customer report for enterprise review."
+2. "The first thing I see is the release verdict: can this selected agent ship, is it blocked, or does it need proof?"
+3. "I can choose a scenario, jump to the highest-risk agent, and run one privacy test or the full scenario suite from the console."
+4. "The local bridge captures encrypted payloads, but the UI only sees safe metadata."
+5. "Now I can see the safe timeline, where data went, which classes moved, and what policy decided."
+6. "I can choose the control: allow selected fields, redact, require approval, or block."
+7. "Finally, I can export a safe trace, verify the saved package hash, and get a release gate plus customer report for enterprise review."
 
 ## Product Principles
 

@@ -30,8 +30,13 @@ async function expectNoRawValues(page: import("@playwright/test").Page) {
 test("first render is a guided demo with four clear steps", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Private AI agent debugging, without private logs" })).toBeVisible();
+  await expect(page.getByText("Fixture workspace", { exact: true })).toBeVisible();
   await expect(page.getByText("Northstar Claims Group", { exact: true })).toBeVisible();
-  await expect(page.getByText("Four-click demo", { exact: true })).toBeVisible();
+  await expect(page.getByText("Ops workflow", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Workspace release verdict")).toBeVisible();
+  await expect(page.getByLabel("Workspace release verdict").getByText("Review before merge", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Workspace release verdict").getByRole("button", { name: "Run suite now" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Investigate highest-risk agent" })).toBeVisible();
   await expect(page.getByRole("group", { name: "Live test scenarios" })).toBeVisible();
   await expect(page.getByRole("button", { name: /Sensitive CRM egress/ })).toBeVisible();
   await expect(page.getByLabel("Company test matrix")).toBeVisible();
@@ -95,6 +100,16 @@ test("primary labels stay plain and old dense navigation is removed", async ({ p
   expect(bodyText).not.toContain("Release evidence");
 });
 
+test("highest-risk CTA opens the data-flow review", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Investigate highest-risk agent" }).click();
+  await expect(page.getByRole("heading", { name: "Review where data went" })).toBeVisible();
+  await expect(page.getByLabel("Workspace release verdict")).toContainText("Benefits Eligibility");
+  await expect(page.getByRole("heading", { name: "Benefits Eligibility", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "CRM tool is blocked for this data class." })).toBeVisible();
+  await expectNoRawValues(page);
+});
+
 test("local API bridge response renders through session token", async ({ page }) => {
   const bridgeUrl = "http://127.0.0.1:39291";
   await page.route(`${bridgeUrl}/**`, async (route) => {
@@ -129,7 +144,7 @@ test("local API bridge response renders through session token", async ({ page })
 
   await page.goto(`/?bridge=${encodeURIComponent(bridgeUrl)}&session=test-token`);
   await expect(page.getByText("Local API connected", { exact: true })).toBeVisible();
-  await expect(page.getByText("run_failed_model_001", { exact: true })).toBeVisible();
+  await expect(page.locator(".run-id-strip").getByText("run_failed_model_001", { exact: true })).toBeVisible();
   await expectNoRawValues(page);
 });
 
@@ -492,8 +507,8 @@ test("live agent test calls bridge and renders safe evidence", async ({ page }) 
   await page.getByRole("button", { name: "Run scenario suite" }).click();
   const suitePanel = page.getByLabel("Scenario suite results");
   await expect(page.getByText("suite_claims_triage_001", { exact: true })).toBeVisible();
-  await expect(page.getByText("3 scenarios", { exact: true })).toBeVisible();
-  await expect(page.getByText("6 findings", { exact: true })).toBeVisible();
+  await expect(suitePanel.getByText("3 scenarios", { exact: true })).toBeVisible();
+  await expect(suitePanel.getByText("6 findings", { exact: true })).toBeVisible();
   await expect(suitePanel.getByText("Metadata-only update", { exact: true })).toBeVisible();
   await expect(suitePanel.getByText("run_suite_approval_001", { exact: true })).toBeVisible();
   expect(suiteCalled).toBe(true);

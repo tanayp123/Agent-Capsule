@@ -460,6 +460,7 @@ export function ConsoleWorkspace() {
   const currentStepIndex = steps.findIndex((step) => step.id === activeStep);
   const selectedPolicyDecision =
     policyDecisionById[policyChoices[selectedAgent.id] ?? defaultPolicyDecisionId(selectedAgent)];
+  const releaseGate = buildReleaseGate(selectedPolicyDecision, scenarioSuiteStatus, evidencePackageStatus);
 
   const updateBridgeUrl = React.useCallback((value: string) => {
     setBridgeUrl(value);
@@ -855,7 +856,7 @@ export function ConsoleWorkspace() {
         </div>
         <div className="header-actions">
           <Badge tone={snapshot.source === "local-api" ? "green" : "blue"}>
-            {snapshot.source === "local-api" ? "Local API connected" : "Demo data"}
+            {snapshot.source === "local-api" ? "Local API connected" : "Fixture workspace"}
           </Badge>
           <Button variant="outline" onClick={() => setShowSettings((value) => !value)}>
             <LockKeyhole className="h-4 w-4" aria-hidden="true" />
@@ -877,12 +878,22 @@ export function ConsoleWorkspace() {
         />
       ) : null}
 
+      <WorkspaceVerdictBanner
+        releaseGate={releaseGate}
+        selectedAgent={selectedAgent}
+        currentRun={currentRun}
+        scenarioSuiteStatus={scenarioSuiteStatus}
+        evidencePackageStatus={evidencePackageStatus}
+        onRunScenarioSuite={handleRunScenarioSuite}
+        setActiveStep={setActiveStep}
+      />
+
       <section className="demo-layout">
         <aside className="guide-panel" aria-label="Demo guide">
           <div className="guide-card">
             <div className="eyebrow">Use this order</div>
-            <h2>Four-click demo</h2>
-            <p>Each step has one job and one next action.</p>
+            <h2>Ops workflow</h2>
+            <p>Run a privacy test, review the data flow, then decide whether the agent can ship.</p>
           </div>
           <nav className="step-nav">
             {steps.map((step, index) => {
@@ -919,6 +930,7 @@ export function ConsoleWorkspace() {
               setSelectedAgentId={setSelectedAgentId}
               selectedScenario={selectedScenario}
               setSelectedScenarioId={setSelectedScenarioId}
+              releaseGate={releaseGate}
               liveRunStatus={liveRunStatus}
               scenarioSuiteStatus={scenarioSuiteStatus}
               onRunLiveAgent={handleRunLiveAgent}
@@ -962,6 +974,7 @@ export function ConsoleWorkspace() {
               snapshot={snapshot}
               policyDecision={selectedPolicyDecision}
               scenarioSuiteStatus={scenarioSuiteStatus}
+              releaseGate={releaseGate}
               evidencePackageStatus={evidencePackageStatus}
               onCreateEvidencePackage={handleCreateEvidencePackage}
               onVerifyEvidencePackage={handleVerifyEvidencePackage}
@@ -977,6 +990,85 @@ export function ConsoleWorkspace() {
   );
 }
 
+function WorkspaceVerdictBanner({
+  releaseGate,
+  selectedAgent,
+  currentRun,
+  scenarioSuiteStatus,
+  evidencePackageStatus,
+  onRunScenarioSuite,
+  setActiveStep
+}: {
+  releaseGate: ReleaseGate;
+  selectedAgent: AgentRecord;
+  currentRun: RunSummary;
+  scenarioSuiteStatus: ScenarioSuiteStatus;
+  evidencePackageStatus: EvidencePackageStatus;
+  onRunScenarioSuite: () => void;
+  setActiveStep: (step: StepId) => void;
+}) {
+  const suiteMissing = !scenarioSuiteStatus.results?.length;
+  const proofMissing = !evidencePackageStatus.packageId || !evidencePackageStatus.customerReport;
+  const runningSuite = scenarioSuiteStatus.state === "running";
+  const action = releaseGate.status === "blocked"
+    ? {
+        label: "Review policy",
+        disabled: false,
+        onClick: () => setActiveStep("flow")
+      }
+    : suiteMissing
+      ? {
+          label: runningSuite ? "Running suite" : "Run suite now",
+          disabled: runningSuite,
+          onClick: onRunScenarioSuite
+        }
+      : proofMissing
+        ? {
+            label: "Open proof",
+            disabled: false,
+            onClick: () => setActiveStep("proof")
+          }
+        : {
+            label: "View customer proof",
+            disabled: false,
+            onClick: () => setActiveStep("proof")
+          };
+
+  return (
+    <section className={`workspace-verdict workspace-verdict-${releaseGate.status}`} aria-label="Workspace release verdict">
+      <div className="workspace-verdict-main">
+        <Badge tone={releaseGate.tone}>{releaseGate.label}</Badge>
+        <div>
+          <h2>{selectedAgent.name}: {releaseGate.status === "ready" ? "safe evidence ready" : "privacy review in progress"}</h2>
+          <p>{releaseGate.summary}</p>
+        </div>
+      </div>
+      <div className="workspace-verdict-facts">
+        <ReportMetric
+          label="Agent"
+          value={selectedAgent.name}
+          detail={`${selectedAgent.risk} risk · ${selectedAgent.destination}`}
+        />
+        <ReportMetric label="Run" value={currentRun.run_id} detail={currentRun.trace_id} />
+        <ReportMetric
+          label="Suite findings"
+          value={formatCount(scenarioSuiteStatus.totalFindings ?? selectedAgent.findings, "finding")}
+          detail={scenarioSuiteStatus.results?.length ? "Scenario suite reviewed" : "Suite not run yet"}
+        />
+        <ReportMetric
+          label="Proof"
+          value={evidencePackageStatus.customerReport ? "Customer-ready" : evidencePackageStatus.packageId ? "Package generated" : "Pending"}
+          detail={evidencePackageStatus.verificationStatus ?? "Hash not verified yet"}
+        />
+      </div>
+      <Button onClick={action.onClick} disabled={action.disabled}>
+        {action.label}
+        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+      </Button>
+    </section>
+  );
+}
+
 function OverviewStep({
   setActiveStep,
   snapshot,
@@ -984,6 +1076,7 @@ function OverviewStep({
   setSelectedAgentId,
   selectedScenario,
   setSelectedScenarioId,
+  releaseGate,
   liveRunStatus,
   scenarioSuiteStatus,
   onRunLiveAgent,
@@ -996,6 +1089,7 @@ function OverviewStep({
   setSelectedAgentId: (id: string) => void;
   selectedScenario: LiveTestScenario;
   setSelectedScenarioId: (id: string) => void;
+  releaseGate: ReleaseGate;
   liveRunStatus: LiveRunStatus;
   scenarioSuiteStatus: ScenarioSuiteStatus;
   onRunLiveAgent: () => void;
@@ -1008,6 +1102,7 @@ function OverviewStep({
     blocked: agents.filter((agent) => agent.status === "Blocked").length,
     traces: snapshot.safeTrace.spans.length
   };
+  const recommendedAgent = recommendedAgentForScenario(selectedScenario);
 
   return (
     <div className="stage-content">
@@ -1025,6 +1120,22 @@ function OverviewStep({
           <SummaryCard label="Runs today" value={formatNumber(totals.runs)} detail="Safe metadata captured" />
           <SummaryCard label="Open privacy items" value={String(totals.findings)} detail="Ready for review" />
           <SummaryCard label="Blocked agents" value={String(totals.blocked)} detail="Unsafe egress stopped" />
+        </div>
+        <div className="hero-decision-row">
+          <div>
+            <div className="eyebrow">Current ship decision</div>
+            <strong>{releaseGate.label}</strong>
+            <span>{releaseGate.summary}</span>
+          </div>
+          <Button
+            onClick={() => {
+              setSelectedAgentId(recommendedAgent.id);
+              setActiveStep("flow");
+            }}
+          >
+            Investigate highest-risk agent
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Button>
         </div>
       </div>
 
@@ -1408,6 +1519,7 @@ function ProofStep({
   snapshot,
   policyDecision,
   scenarioSuiteStatus,
+  releaseGate,
   evidencePackageStatus,
   onCreateEvidencePackage,
   onVerifyEvidencePackage,
@@ -1421,6 +1533,7 @@ function ProofStep({
   snapshot: ConsoleSnapshot;
   policyDecision: PolicyDecisionOption;
   scenarioSuiteStatus: ScenarioSuiteStatus;
+  releaseGate: ReleaseGate;
   evidencePackageStatus: EvidencePackageStatus;
   onCreateEvidencePackage: () => void;
   onVerifyEvidencePackage: () => void;
@@ -1429,8 +1542,6 @@ function ProofStep({
   setExportState: (state: string) => void;
   setActiveStep: (step: StepId) => void;
 }) {
-  const releaseGate = buildReleaseGate(policyDecision, scenarioSuiteStatus, evidencePackageStatus);
-
   return (
     <div className="stage-content">
       <StageHeader
@@ -2352,6 +2463,16 @@ function agentTestScore(agent: AgentRecord, scenario: LiveTestScenario) {
   const overlap = agent.dataClasses.filter((dataClass) => scenario.dataClasses.includes(dataClass)).length;
   const statusWeight = agent.status === "Blocked" ? 4 : agent.status === "Needs review" ? 2 : 0;
   return risk * 10 + agent.findings * 4 + overlap * 6 + statusWeight;
+}
+
+function recommendedAgentForScenario(scenario: LiveTestScenario) {
+  return [...agents].sort((left, right) => {
+    const riskDelta = agentTestScore(right, scenario) - agentTestScore(left, scenario);
+    if (riskDelta !== 0) {
+      return riskDelta;
+    }
+    return right.runsToday - left.runsToday;
+  })[0];
 }
 
 function scenarioOutcome(agent: AgentRecord, scenario: LiveTestScenario) {

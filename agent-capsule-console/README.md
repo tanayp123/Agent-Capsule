@@ -58,17 +58,18 @@ Open the printed URL. It includes `bridge` and `session` query parameters for th
 
 Use the console in this order:
 
-1. Choose a live test scenario, use the company test matrix to select the agent with the clearest risk signal, then click `Run live agent test` for one scenario or `Run scenario suite` for all built-in scenarios.
-2. Review the scenario result or suite result, run ID, trace ID, span count, findings, safe execution timeline, destination findings, data classes, and policy action.
-3. Choose a policy response: allow destination, allow selected fields, redact fields, require human approval, or block tool.
-4. Review the policy patch preview and CI gate summary.
-5. Click `Share safe proof`.
-6. Review the release gate. It should explain whether the agent is blocked, ready for review, or ready for a controlled merge.
-7. Click `Prepare safe trace`.
-8. Click `Generate evidence package`.
-9. Click `Verify saved package`.
-10. Click `Build customer report`.
-11. Confirm the release gate changes to `Ready for controlled merge` when scenario coverage, policy control, verified evidence, and customer proof are all present.
+1. Start from the workspace release verdict. It summarizes whether the selected agent is blocked, ready for review, or ready for controlled merge.
+2. Choose a live test scenario, use `Investigate highest-risk agent` or the company test matrix to select the clearest risk signal, then click `Run live agent test` for one scenario or `Run scenario suite` for all built-in scenarios.
+3. Review the scenario result or suite result, run ID, trace ID, span count, findings, safe execution timeline, destination findings, data classes, and policy action.
+4. Choose a policy response: allow destination, allow selected fields, redact fields, require human approval, or block tool.
+5. Review the policy patch preview and CI gate summary.
+6. Click `Share safe proof`.
+7. Review the proof-stage release gate. It should explain whether the agent is blocked, ready for review, or ready for a controlled merge.
+8. Click `Prepare safe trace`.
+9. Click `Generate evidence package`.
+10. Click `Verify saved package`.
+11. Click `Build customer report`.
+12. Confirm the workspace verdict and proof-stage release gate change to `Ready for controlled merge` when scenario coverage, policy control, verified evidence, and customer proof are all present.
 
 The live test endpoint writes encrypted payload sidecars locally, then returns only safe trace metadata and the privacy map to the browser.
 
@@ -102,7 +103,7 @@ npm run test:ui
 
 ## Product Flow
 
-- Start here: show the company workspace, ten agents, open privacy items, current run evidence, scenario-aware live testing, and a company test matrix ranked by risk, finding load, and scenario fit.
+- Start here: show the company workspace, persistent release verdict, ten agents, open privacy items, current run evidence, scenario-aware live testing, highest-risk CTA, and a company test matrix ranked by risk, finding load, and scenario fit.
 - Pick an agent: choose one of the company agents to inspect.
 - See where data went: inspect destination, data classes, policy action, run ID, trace ID, span count, findings, safe execution timeline, destination findings, policy response options, patch preview, and CI gate summary.
 - Export safe evidence: prepare a safe trace, review the release gate, generate an evidence package, verify the saved hash, and build the customer-ready report that includes the selected policy response.

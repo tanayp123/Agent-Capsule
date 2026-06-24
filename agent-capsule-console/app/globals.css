@@ -70,6 +70,61 @@ textarea {
   box-shadow: 0 16px 42px rgba(15, 23, 42, 0.05);
 }
 
+.workspace-verdict {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.85fr) minmax(0, 1.4fr) auto;
+  gap: 16px;
+  align-items: stretch;
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  background: #fff;
+  padding: 14px;
+  box-shadow: 0 16px 42px rgba(15, 23, 42, 0.05);
+}
+
+.workspace-verdict-review {
+  border-color: hsl(38 80% 72%);
+}
+
+.workspace-verdict-blocked {
+  border-color: hsl(0 72% 75%);
+}
+
+.workspace-verdict-ready {
+  border-color: hsl(156 54% 68%);
+}
+
+.workspace-verdict-main {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+
+.workspace-verdict-main h2 {
+  font-size: 20px;
+}
+
+.workspace-verdict-main p {
+  font-size: 13px;
+}
+
+.workspace-verdict-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.workspace-verdict-facts .report-metric {
+  border-bottom: 0;
+}
+
+.workspace-verdict > button {
+  align-self: center;
+  white-space: nowrap;
+}
+
 .brand-block {
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr);
@@ -316,6 +371,33 @@ p {
 .hero-card p {
   max-width: 780px;
   font-size: 17px;
+}
+
+.hero-decision-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  border-top: 1px solid hsl(var(--border));
+  padding-top: 14px;
+}
+
+.hero-decision-row strong,
+.hero-decision-row span {
+  display: block;
+}
+
+.hero-decision-row strong {
+  margin-top: 4px;
+  color: hsl(var(--foreground));
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.hero-decision-row span {
+  margin-top: 4px;
+  color: hsl(var(--muted-foreground));
+  font-size: 13px;
 }
 
 .summary-grid {
@@ -1311,6 +1393,7 @@ p {
 
 @media (max-width: 1120px) {
   .demo-layout,
+  .workspace-verdict,
   .settings-panel {
     grid-template-columns: 1fr;
   }
@@ -1334,6 +1417,7 @@ p {
   .suite-summary,
   .suite-result-row,
   .scorecard-panel,
+  .workspace-verdict-facts,
   .release-gate-facts,
   .policy-action-grid,
   .customer-report-metrics,
@@ -1352,6 +1436,7 @@ p {
   }
 
   .demo-header,
+  .hero-decision-row,
   .selected-summary,
   .decision-panel,
   .inspection-grid,
@@ -1379,6 +1464,11 @@ p {
 
   .report-metric:last-child {
     border-bottom: 0;
+  }
+
+  .workspace-verdict > button,
+  .hero-decision-row button {
+    width: 100%;
   }
 
   .demo-header {
