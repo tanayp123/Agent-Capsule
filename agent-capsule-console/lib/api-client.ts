@@ -32,6 +32,14 @@ export type LiveAgentRunResult = {
     data_classes: string[];
     destination_id: string;
   };
+  agent_under_test?: {
+    execution_mode: string;
+    language: string;
+    source_file: string;
+    entrypoint: string;
+    instrumentation: string[];
+    scenario_id: string;
+  };
   test_result?: {
     status: string;
     summary: string;

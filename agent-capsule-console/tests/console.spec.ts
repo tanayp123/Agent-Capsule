@@ -27,7 +27,7 @@ async function expectNoRawValues(page: import("@playwright/test").Page) {
   }
 }
 
-test("first render is a guided demo with four clear steps", async ({ page }) => {
+test("first render centers one real executable agent", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Private AI agent debugging, without private logs" })).toBeVisible();
   await expect(page.getByText("Fixture workspace", { exact: true })).toBeVisible();
@@ -36,29 +36,29 @@ test("first render is a guided demo with four clear steps", async ({ page }) => 
   await expect(page.getByLabel("Workspace release verdict")).toBeVisible();
   await expect(page.getByLabel("Workspace release verdict").getByText("Review before merge", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Workspace release verdict").getByRole("button", { name: "Run suite now" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Investigate highest-risk agent" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Open real agent review" })).toBeVisible();
+  await expect(page.getByLabel("Real agent under test")).toBeVisible();
+  await expect(page.getByLabel("Real agent under test").getByText("examples/claims-triage-python/claims_triage.py", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Real agent under test").getByText("Capsule.wrap_model_client + Capsule.wrap_tool", { exact: true })).toBeVisible();
   await expect(page.getByRole("group", { name: "Live test scenarios" })).toBeVisible();
   await expect(page.getByRole("button", { name: /Sensitive CRM egress/ })).toBeVisible();
-  await expect(page.getByLabel("Company test matrix")).toBeVisible();
+  await expect(page.getByText("Showcase agent", { exact: true })).toBeVisible();
+  await expect(page.getByText("Real Python claims-triage agent", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Scenario suite results")).toBeVisible();
   await expect(page.getByRole("button", { name: "Run scenario suite" })).toBeVisible();
-  await expect(page.getByText("Benefits Eligibility", { exact: true })).toBeVisible();
-  await expect(page.getByText("Block before release", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: /Contract Review/ }).click();
-  await expect(page.getByRole("heading", { name: "Run a privacy test on Contract Review" })).toBeVisible();
 
   for (const step of primarySteps) {
     await expect(page.getByRole("button", { name: step })).toBeVisible();
   }
-  await expect(page.getByRole("button", { name: "Run live agent test" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Start with an agent" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Run real agent test" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "View agent context" })).toBeVisible();
   await expectNoRawValues(page);
 });
 
 test("guided workflow moves through agent, data sharing, and evidence steps", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Start with an agent" }).click();
-  await expect(page.getByRole("heading", { name: "Choose one agent to inspect" })).toBeVisible();
+  await page.getByRole("button", { name: "View agent context" }).click();
+  await expect(page.getByRole("heading", { name: "Agent context" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Claims Triage Needs review" })).toBeVisible();
 
   await page.getByRole("button", { name: "Review data flow" }).click();
@@ -100,13 +100,14 @@ test("primary labels stay plain and old dense navigation is removed", async ({ p
   expect(bodyText).not.toContain("Release evidence");
 });
 
-test("highest-risk CTA opens the data-flow review", async ({ page }) => {
+test("real-agent CTA opens the data-flow review", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Investigate highest-risk agent" }).click();
+  await page.getByRole("button", { name: "Open real agent review" }).click();
   await expect(page.getByRole("heading", { name: "Review where data went" })).toBeVisible();
-  await expect(page.getByLabel("Workspace release verdict")).toContainText("Benefits Eligibility");
-  await expect(page.getByRole("heading", { name: "Benefits Eligibility", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "CRM tool is blocked for this data class." })).toBeVisible();
+  await expect(page.getByLabel("Workspace release verdict")).toContainText("Claims Triage");
+  await expect(page.getByText("examples/claims-triage-python/claims_triage.py", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Claims Triage", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Email and account notes are redacted before CRM egress." })).toBeVisible();
   await expectNoRawValues(page);
 });
 
@@ -522,7 +523,7 @@ test("live agent test calls bridge and renders safe evidence", async ({ page }) 
   await expect(page.locator(".live-result-strip").getByText("trc_suite_approval_001", { exact: true })).toBeVisible();
   await expect(page.getByText("Approval-required note", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Start here" }).click();
-  await page.getByRole("button", { name: "Run live agent test" }).click();
+  await page.getByRole("button", { name: "Run real agent test" }).click();
   await expect(page.getByRole("heading", { name: "Review where data went" })).toBeVisible();
   expect(liveRunCalled).toBe(true);
   await expect(page.getByRole("heading", { name: liveRunId })).toBeVisible();
@@ -533,6 +534,7 @@ test("live agent test calls bridge and renders safe evidence", async ({ page }) 
   await expect(page.getByText("High-risk destination review", { exact: true })).toBeVisible();
   await expect(page.getByText("needs review", { exact: true })).toBeVisible();
   await expect(page.getByText("Safe metadata only", { exact: true })).toBeVisible();
+  await expect(page.getByText("examples/claims-triage-python/claims_triage.py", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Safe execution timeline")).toBeVisible();
   await expect(page.getByLabel("Destination findings")).toBeVisible();
   await page.getByRole("button", { name: "Share safe proof" }).click();
@@ -589,7 +591,7 @@ test("settings is available but not part of the primary demo path", async ({ pag
 
 test("responsive layout avoids horizontal page overflow", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Start with an agent" }).click();
+  await page.getByRole("button", { name: "View agent context" }).click();
   await page.getByRole("button", { name: "Review data flow" }).click();
   const metrics = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,

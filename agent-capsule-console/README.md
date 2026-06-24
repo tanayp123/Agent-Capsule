@@ -45,7 +45,7 @@ Terminal 2 creates a sample trace and opens a session-scoped console URL:
 ```bash
 source ci/python-env.sh
 PYTHONPATH="cli/src:$PYTHONPATH" python3 -m agent_capsule_cli run --mode observe -- \
-  python3 examples/claims-triage-python/claims_triage.py
+  python3 examples/claims-triage-python/claims_triage.py --scenario-id sensitive-crm-egress
 
 PYTHONPATH="cli/src:$PYTHONPATH" python3 -m agent_capsule_cli view \
   --console-url http://127.0.0.1:3018 \
@@ -59,23 +59,24 @@ Open the printed URL. It includes `bridge` and `session` query parameters for th
 Use the console in this order:
 
 1. Start from the workspace release verdict. It summarizes whether the selected agent is blocked, ready for review, or ready for controlled merge.
-2. Choose a live test scenario, use `Investigate highest-risk agent` or the company test matrix to select the clearest risk signal, then click `Run live agent test` for one scenario or `Run scenario suite` for all built-in scenarios.
-3. Review the scenario result or suite result, run ID, trace ID, span count, findings, safe execution timeline, destination findings, data classes, and policy action.
-4. Choose a policy response: allow destination, allow selected fields, redact fields, require human approval, or block tool.
-5. Review the policy patch preview and CI gate summary.
-6. Click `Share safe proof`.
-7. Review the proof-stage release gate. It should explain whether the agent is blocked, ready for review, or ready for a controlled merge.
-8. Click `Prepare safe trace`.
-9. Click `Generate evidence package`.
-10. Click `Verify saved package`.
-11. Click `Build customer report`.
-12. Confirm the workspace verdict and proof-stage release gate change to `Ready for controlled merge` when scenario coverage, policy control, verified evidence, and customer proof are all present.
+2. Point to the `Real agent under test` panel. It shows the runnable source file, entrypoint, and SDK hooks used by the claims-triage agent.
+3. Choose a live test scenario, then click `Run real agent test` for one scenario or `Run scenario suite` for all built-in scenarios.
+4. Review the scenario result or suite result, run ID, trace ID, span count, findings, safe execution timeline, destination findings, data classes, and policy action.
+5. Choose a policy response: allow destination, allow selected fields, redact fields, require human approval, or block tool.
+6. Review the policy patch preview and CI gate summary.
+7. Click `Share safe proof`.
+8. Review the proof-stage release gate. It should explain whether the agent is blocked, ready for review, or ready for a controlled merge.
+9. Click `Prepare safe trace`.
+10. Click `Generate evidence package`.
+11. Click `Verify saved package`.
+12. Click `Build customer report`.
+13. Confirm the workspace verdict and proof-stage release gate change to `Ready for controlled merge` when scenario coverage, policy control, verified evidence, and customer proof are all present.
 
 The live test endpoint writes encrypted payload sidecars locally, then returns only safe trace metadata and the privacy map to the browser.
 
 ## Demo Mode
 
-Opening `http://127.0.0.1:3018` without a bridge still shows a complete guided fixture demo. In this mode, `Run live agent test` prepares the same workflow on screen but does not claim that a new encrypted trace was captured.
+Opening `http://127.0.0.1:3018` without a bridge still shows a complete guided fixture demo. In this mode, `Run real agent test` prepares the same workflow on screen but does not claim that a new encrypted trace was captured.
 
 ## Bridge URL
 
@@ -103,8 +104,8 @@ npm run test:ui
 
 ## Product Flow
 
-- Start here: show the company workspace, persistent release verdict, ten agents, open privacy items, current run evidence, scenario-aware live testing, highest-risk CTA, and a company test matrix ranked by risk, finding load, and scenario fit.
-- Pick an agent: choose one of the company agents to inspect.
+- Start here: show the company workspace, persistent release verdict, one real Python claims-triage agent under test, source file, SDK hooks, current run evidence, and scenario-aware live testing.
+- Agent context: show that the same release workflow can expand across other company agents, without making them the primary demo.
 - See where data went: inspect destination, data classes, policy action, run ID, trace ID, span count, findings, safe execution timeline, destination findings, policy response options, patch preview, and CI gate summary.
 - Export safe evidence: prepare a safe trace, review the release gate, generate an evidence package, verify the saved hash, and build the customer-ready report that includes the selected policy response.
 - Local settings: advanced bridge, session-token, and local reveal controls are available but outside the primary demo path.
@@ -124,6 +125,7 @@ The response includes:
 
 - `run`: safe run metadata
 - `test_scenario`: selected scenario name, expected result, data classes, and destination ID
+- `agent_under_test`: execution mode, source file, entrypoint, language, and SDK instrumentation hooks
 - `test_result`: safe result status, finding summary, encrypted payload count, and safe-payload attestation
 - `safe_trace`: redacted workflow, spans, hashes, token counts, payload sizes, and policy decisions
 - `privacy_map`: destinations, data classes, findings, and policy suggestions

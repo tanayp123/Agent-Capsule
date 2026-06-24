@@ -2,7 +2,7 @@
 
 Purpose: demonstrate the primary Agent Capsule workflow using a Python claims-triage agent.
 
-Phase 11 status: sample supports Observe mode, Guard Mode, and signed manifest build evidence.
+Showcase status: this is the real executable agent used by the Agent Capsule Console's live test path for `claims-triage`.
 
 Planned workflow:
 
@@ -22,11 +22,34 @@ Implemented in Phase 2:
 - Tool-call wrapper
 - Dataclass field classification
 - Local trace metadata output
+- Scenario-driven test cases for CRM egress, metadata-only update, and approval-required note
 
 Run from the repository root:
 
 ```bash
-PYTHONPATH=sdk-python/src python3 examples/claims-triage-python/claims_triage.py --trace-dir /tmp/agent-capsule-claims-trace
+source ci/python-env.sh
+python3 examples/claims-triage-python/claims_triage.py \
+  --trace-dir /tmp/agent-capsule-claims-trace \
+  --scenario-id sensitive-crm-egress
+```
+
+Print safe run metadata as JSON:
+
+```bash
+source ci/python-env.sh
+python3 examples/claims-triage-python/claims_triage.py \
+  --trace-dir /tmp/agent-capsule-claims-trace \
+  --scenario-id sensitive-crm-egress \
+  --run-id run_showcase_real_agent_001 \
+  --json
+```
+
+Available scenarios:
+
+```text
+sensitive-crm-egress
+metadata-only-check
+approval-required
 ```
 
 Run the sample with Guard Mode and a restrictive policy:

@@ -55,8 +55,8 @@ This creates a clearer buyer story than "another agent tracing tool":
 
 The console demo should prove six things in under three minutes:
 
-1. A company is running multiple agents across sensitive workflows.
-2. The user can see a persistent workspace release verdict, choose a scenario, use the highest-risk CTA or company test matrix to select a risky agent, and run one scenario or the full scenario suite, not only inspect static fixture data.
+1. A company is testing one real Python claims-triage agent before it ships to enterprise customers.
+2. The user can see a persistent workspace release verdict, inspect the source file and SDK hooks, choose a scenario, and run one scenario or the full scenario suite, not only inspect static fixture data.
 3. The test creates encrypted trace payloads locally.
 4. The browser receives safe metadata only: workflow timeline, hashes, data classes, destinations, span counts, token counts, redaction markers, and policy decisions.
 5. The reviewer can choose a policy control: allow, allow selected fields, redact, require human approval, or block.
@@ -66,9 +66,9 @@ The console demo should prove six things in under three minutes:
 
 Use this sequence:
 
-1. "This company has ten production-like agents touching claims, support, legal, finance, and risk workflows."
-2. "The first thing I see is the release verdict: can this selected agent ship, is it blocked, or does it need proof?"
-3. "I can choose a scenario, jump to the highest-risk agent, and run one privacy test or the full scenario suite from the console."
+1. "This is a real claims-triage agent, not a mock dashboard. The console shows the source file, entrypoint, and SDK hooks before I run it."
+2. "The first thing I see is the release verdict: can this agent ship, is it blocked, or does it need proof?"
+3. "I can choose a scenario and run one privacy test or the full scenario suite from the console."
 4. "The local bridge captures encrypted payloads, but the UI only sees safe metadata."
 5. "Now I can see the safe timeline, where data went, which classes moved, and what policy decided."
 6. "I can choose the control: allow selected fields, redact, require approval, or block."
@@ -77,6 +77,7 @@ Use this sequence:
 ## Product Principles
 
 - Show fewer screens with stronger evidence.
+- Lead with one real executable agent. Use the broader company workspace as context, not as the main demo proof.
 - Use plain language: "where data went" instead of "privacy map"; "safe evidence" instead of "compliance artifact."
 - Keep raw payload reveal outside the primary path.
 - Make run IDs, trace IDs, span counts, finding counts, and destination status visible because they feel concrete.

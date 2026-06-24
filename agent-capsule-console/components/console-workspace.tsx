@@ -80,6 +80,10 @@ type LiveRunStatus = {
   traceId?: string;
   spanCount?: number;
   findings?: number;
+  agentExecutionMode?: string;
+  agentSourceFile?: string;
+  agentEntrypoint?: string;
+  agentInstrumentation?: string[];
 };
 
 type ScenarioSuiteStatus = {
@@ -174,10 +178,15 @@ const steps: Array<{ id: StepId; title: string; plainTitle: string; helper: stri
 
 const company = {
   name: "Northstar Claims Group",
-  description: "A company using AI agents across claims, support, legal, finance, and risk teams.",
+  description: "A production-like workspace testing one real claims-triage agent before it can ship.",
   environment: "Production-like demo workspace",
   buyerLine: "For AI startups selling agents to enterprise customers"
 };
+
+const showcaseAgentId = "claims-triage";
+const showcaseSourceFile = "examples/claims-triage-python/claims_triage.py";
+const showcaseEntrypoint = "run_claims_triage";
+const showcaseInstrumentation = ["Capsule.wrap_model_client", "Capsule.wrap_tool"];
 
 const liveTestScenarios: LiveTestScenario[] = [
   {
@@ -493,7 +502,11 @@ export function ConsoleWorkspace() {
         runId: `run_live_${selectedAgent.id}_demo`,
         traceId: `trc_live_${selectedAgent.id}_demo`,
         spanCount: 4,
-        findings: selectedAgent.findings
+        findings: selectedAgent.findings,
+        agentExecutionMode: "fixture_preview",
+        agentSourceFile: "examples/claims-triage-python/claims_triage.py",
+        agentEntrypoint: "run_claims_triage",
+        agentInstrumentation: ["Capsule.wrap_model_client", "Capsule.wrap_tool"]
       });
       setActiveStep("flow");
       return;
@@ -520,7 +533,11 @@ export function ConsoleWorkspace() {
         runId: result.run.run_id,
         traceId: result.run.trace_id,
         spanCount: result.run.span_count ?? result.safe_trace.spans.length,
-        findings: result.proof.policy_findings
+        findings: result.proof.policy_findings,
+        agentExecutionMode: result.agent_under_test?.execution_mode,
+        agentSourceFile: result.agent_under_test?.source_file,
+        agentEntrypoint: result.agent_under_test?.entrypoint,
+        agentInstrumentation: result.agent_under_test?.instrumentation
       });
       setExportState(`${result.run.run_id}-safe-trace.json ready`);
       setEvidencePackageStatus({
@@ -1096,13 +1113,8 @@ function OverviewStep({
   onRunScenarioSuite: () => void;
   onOpenSuiteResult: (result: ScenarioSuiteResult) => void;
 }) {
-  const totals = {
-    runs: agents.reduce((sum, agent) => sum + agent.runsToday, 0),
-    findings: agents.reduce((sum, agent) => sum + agent.findings, 0),
-    blocked: agents.filter((agent) => agent.status === "Blocked").length,
-    traces: snapshot.safeTrace.spans.length
-  };
-  const recommendedAgent = recommendedAgentForScenario(selectedScenario);
+  const showcaseAgent = agents.find((agent) => agent.id === showcaseAgentId) ?? agents[0];
+  const latestEncryptedPayloads = liveRunStatus.encryptedPayloads ?? snapshot.safeTrace.content_hashes.length;
 
   return (
     <div className="stage-content">
@@ -1116,10 +1128,10 @@ function OverviewStep({
           <span>{liveRunStatus.traceId ?? snapshot.runs[0]?.trace_id ?? "trace_demo"}</span>
         </div>
         <div className="summary-grid">
-          <SummaryCard label="AI agents" value={String(agents.length)} detail="Across business teams" />
-          <SummaryCard label="Runs today" value={formatNumber(totals.runs)} detail="Safe metadata captured" />
-          <SummaryCard label="Open privacy items" value={String(totals.findings)} detail="Ready for review" />
-          <SummaryCard label="Blocked agents" value={String(totals.blocked)} detail="Unsafe egress stopped" />
+          <SummaryCard label="Showcase agent" value="1" detail="Real Python claims-triage agent" />
+          <SummaryCard label="Test scenarios" value={String(liveTestScenarios.length)} detail="CRM egress, metadata, approval" />
+          <SummaryCard label="Encrypted payloads" value={formatNumber(latestEncryptedPayloads)} detail="Browser sees safe metadata" />
+          <SummaryCard label="Policy findings" value={String(liveRunStatus.findings ?? selectedAgent.findings)} detail="Release gate input" />
         </div>
         <div className="hero-decision-row">
           <div>
@@ -1129,48 +1141,22 @@ function OverviewStep({
           </div>
           <Button
             onClick={() => {
-              setSelectedAgentId(recommendedAgent.id);
+              setSelectedAgentId(showcaseAgent.id);
               setActiveStep("flow");
             }}
           >
-            Investigate highest-risk agent
+            Open real agent review
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
       </div>
 
-      <div className="plain-card live-test-card">
-        <div className="card-icon"><PlayCircle className="h-5 w-5" aria-hidden="true" /></div>
-        <div>
-          <h3>Run a privacy test on {selectedAgent.name}</h3>
-          <p>
-            Capture a run, encrypt payloads locally, and review only the safe metadata:
-            workflow structure, hashes, data classes, destinations, and policy decisions.
-          </p>
-          <div className="live-run-status">
-            <Badge tone={liveRunTone(liveRunStatus.state)}>{liveRunLabel(liveRunStatus.state)}</Badge>
-            <span>{liveRunStatus.message}</span>
-          </div>
-          <div className="scenario-picker" role="group" aria-label="Live test scenarios">
-            {liveTestScenarios.map((scenario) => (
-              <button
-                key={scenario.id}
-                className={["scenario-button", scenario.id === selectedScenario.id ? "scenario-button-active" : ""].join(" ")}
-                onClick={() => setSelectedScenarioId(scenario.id)}
-                type="button"
-              >
-                <span>{scenario.title}</span>
-                <small>{scenario.expectedResult}</small>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <AgentTestMatrix
+      <RealAgentUnderTestPanel
         selectedAgent={selectedAgent}
         selectedScenario={selectedScenario}
         setSelectedAgentId={setSelectedAgentId}
+        setSelectedScenarioId={setSelectedScenarioId}
+        liveRunStatus={liveRunStatus}
       />
 
       <ScenarioSuitePanel
@@ -1185,7 +1171,7 @@ function OverviewStep({
             disabled={liveRunStatus.state === "running" || scenarioSuiteStatus.state === "running"}
           >
             <PlayCircle className="h-4 w-4" aria-hidden="true" />
-            {liveRunStatus.state === "running" ? "Running test" : "Run live agent test"}
+            {liveRunStatus.state === "running" ? "Running test" : "Run real agent test"}
           </Button>
           <Button
             variant="outline"
@@ -1197,11 +1183,78 @@ function OverviewStep({
           </Button>
         </div>
         <Button variant="outline" onClick={() => setActiveStep("agents")}>
-          Start with an agent
+          View agent context
           <ArrowRight className="h-4 w-4" aria-hidden="true" />
         </Button>
       </div>
     </div>
+  );
+}
+
+function RealAgentUnderTestPanel({
+  selectedAgent,
+  selectedScenario,
+  setSelectedAgentId,
+  setSelectedScenarioId,
+  liveRunStatus
+}: {
+  selectedAgent: AgentRecord;
+  selectedScenario: LiveTestScenario;
+  setSelectedAgentId: (id: string) => void;
+  setSelectedScenarioId: (id: string) => void;
+  liveRunStatus: LiveRunStatus;
+}) {
+  const isShowcaseAgent = selectedAgent.id === showcaseAgentId;
+  const sourceFile = liveRunStatus.agentSourceFile ?? showcaseSourceFile;
+  const entrypoint = liveRunStatus.agentEntrypoint ?? showcaseEntrypoint;
+  const instrumentation = liveRunStatus.agentInstrumentation ?? showcaseInstrumentation;
+
+  return (
+    <section className="real-agent-panel" aria-label="Real agent under test">
+      <div className="real-agent-header">
+        <div>
+          <div className="eyebrow">Real agent under test</div>
+          <h3>{isShowcaseAgent ? "Claims Triage" : selectedAgent.name}</h3>
+          <p>
+            The showcase runs a real Python agent through the Agent Capsule SDK, captures encrypted payload sidecars locally,
+            and returns only safe trace metadata to this browser.
+          </p>
+        </div>
+        <Badge tone={isShowcaseAgent ? "green" : "amber"}>
+          {isShowcaseAgent ? "Executable agent" : "Context agent"}
+        </Badge>
+      </div>
+      <div className="real-agent-facts">
+        <ReportMetric label="Source file" value={sourceFile} detail="Runnable from the repository" />
+        <ReportMetric label="Entrypoint" value={entrypoint} detail="Called by local API bridge" />
+        <ReportMetric label="SDK hooks" value={instrumentation.join(" + ")} detail="Model and tool egress wrapped" />
+        <ReportMetric
+          label="Last result"
+          value={liveRunStatus.resultStatus ?? "Not run"}
+          detail={liveRunStatus.resultSummary ?? "Run a scenario to capture evidence"}
+        />
+      </div>
+      <div className="live-run-status">
+        <Badge tone={liveRunTone(liveRunStatus.state)}>{liveRunLabel(liveRunStatus.state)}</Badge>
+        <span>{liveRunStatus.message}</span>
+      </div>
+      <div className="scenario-picker" role="group" aria-label="Live test scenarios">
+        {liveTestScenarios.map((scenario) => (
+          <button
+            key={scenario.id}
+            className={["scenario-button", scenario.id === selectedScenario.id ? "scenario-button-active" : ""].join(" ")}
+            onClick={() => {
+              setSelectedAgentId(showcaseAgentId);
+              setSelectedScenarioId(scenario.id);
+            }}
+            type="button"
+          >
+            <span>{scenario.title}</span>
+            <small>{scenario.expectedResult}</small>
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -1338,8 +1391,8 @@ function AgentStep({
   return (
     <div className="stage-content">
       <StageHeader
-        title="Choose one agent to inspect"
-        body="For the demo, start with Claims Triage because it shows the main privacy review workflow."
+        title="Agent context"
+        body="Claims Triage is the real executable agent in this demo. The other agents show how the same release workflow expands across a company."
       />
       <div className="agent-grid">
         {agents.map((agent) => (
@@ -1441,6 +1494,8 @@ function FlowStep({
           <strong>{formatCount(liveRunStatus.encryptedPayloads, "payload")}</strong>
           <span>Browser payload view</span>
           <strong>{safePayloadsOnly ? "Safe metadata only" : "Not run"}</strong>
+          <span>Agent source</span>
+          <strong>{liveRunStatus.agentSourceFile ?? showcaseSourceFile}</strong>
         </div>
       </div>
       <div className="flow-diagram" aria-label="Data flow diagram">

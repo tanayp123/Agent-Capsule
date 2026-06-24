@@ -50,14 +50,15 @@ The startup line prints the selected localhost port and session token as JSON.
 
 ## Live Agent Test
 
-`POST /live-agents/:agent_id/run` runs a representative local agent workflow through the Python SDK instrumentation. The request can include `scenario_id` with one of `sensitive-crm-egress`, `metadata-only-check`, or `approval-required`. The endpoint writes encrypted payload sidecars to the local trace store, exports a safe trace, generates a privacy map, audits the test capture, and returns only safe metadata to the browser.
+`POST /live-agents/:agent_id/run` runs a representative local agent workflow through the Python SDK instrumentation. For `claims-triage`, the bridge executes the real showcase agent at `examples/claims-triage-python/claims_triage.py` through `run_claims_triage`. The request can include `scenario_id` with one of `sensitive-crm-egress`, `metadata-only-check`, or `approval-required`. The endpoint writes encrypted payload sidecars to the local trace store, exports a safe trace, generates a privacy map, audits the test capture, and returns only safe metadata to the browser.
 
-The endpoint supports the demo console's ten agent IDs. Unknown IDs use a generic external-tool profile so every selected agent can still produce a trace-shaped privacy review.
+The endpoint still supports the demo console's context agent IDs. Unknown or non-showcase IDs use a generic external-tool profile so every selected agent can still produce a trace-shaped privacy review, but the recommended demo path is the real `claims-triage` agent.
 
 The response includes:
 
 - `run`: safe run metadata
 - `test_scenario`: selected scenario name, expected result, data classes, and destination ID
+- `agent_under_test`: whether the run used the real agent or fallback runner, plus language, source file, entrypoint, scenario ID, and SDK instrumentation hooks
 - `test_result`: safe result status, finding summary, encrypted payload count, and safe-payload attestation
 - `safe_trace`: redacted timeline, workflow graph, component versions, payload sizes, token counts, policy decisions, content hashes, and redaction markers
 - `privacy_map`: destinations, data classes, findings, and policy suggestions

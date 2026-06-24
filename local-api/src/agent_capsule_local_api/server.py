@@ -1,5 +1,6 @@
 import argparse
 import hashlib
+import importlib.util
 import json
 import secrets
 import threading
@@ -538,50 +539,76 @@ class LocalApiBridge:
             _safe_slug(agent_id),
             secrets.token_hex(4),
         )
-        capsule = Capsule.init(
-            mode="observe",
-            policy=str(self.config.policy_path) if self.config.policy_path else None,
-            trace_dir=str(self.config.trace_dir),
-            agent_name=demo["name"],
-            agent_version=demo["version"],
-        )
-        model_destination = Destination(
-            id="model_vendor",
-            type="model_provider",
-            domain="models.example.com",
-            provider="Example Models",
-            risk="medium",
-        )
-        tool_destination = Destination(
-            id=demo["destination_id"],
-            type=demo["destination_type"],
-            domain=demo["destination_domain"],
-            provider=demo["destination_provider"],
-            risk=demo["destination_risk"],
-        )
+        if agent_id == "claims-triage" and _claims_triage_example_path().exists():
+            showcase = _run_claims_triage_showcase(
+                trace_dir=self.config.trace_dir,
+                policy_path=self.config.policy_path,
+                run_id=run_id,
+                scenario_id=scenario["id"],
+                demo=demo,
+            )
+            run_id = showcase["run_id"]
+            agent_under_test = {
+                "execution_mode": "real_agent",
+                "language": "python",
+                "source_file": showcase["source_file"],
+                "entrypoint": showcase["entrypoint"],
+                "instrumentation": showcase["instrumentation"],
+                "scenario_id": showcase["scenario_id"],
+            }
+        else:
+            capsule = Capsule.init(
+                mode="observe",
+                policy=str(self.config.policy_path) if self.config.policy_path else None,
+                trace_dir=str(self.config.trace_dir),
+                agent_name=demo["name"],
+                agent_version=demo["version"],
+            )
+            model_destination = Destination(
+                id="model_vendor",
+                type="model_provider",
+                domain="models.example.com",
+                provider="Example Models",
+                risk="medium",
+            )
+            tool_destination = Destination(
+                id=demo["destination_id"],
+                type=demo["destination_type"],
+                domain=demo["destination_domain"],
+                provider=demo["destination_provider"],
+                risk=demo["destination_risk"],
+            )
 
-        with capsule.run("%s / %s" % (demo["workflow"], scenario["name"]), run_id=run_id) as run:
-            with run.span(
-                "model_call",
-                demo["model_component"],
-                payload={
-                    "prompt": scenario["prompt"],
-                    **scenario["model_payload"],
-                },
-                destination=model_destination,
-                token_count=scenario["token_count"],
-            ):
-                pass
-            with run.span(
-                "tool_call",
-                demo["tool_component"],
-                payload={
-                    "tool_payload": scenario["tool_payload"],
-                },
-                destination=tool_destination,
-            ):
-                pass
-            run.record_output(scenario["model_output"])
+            with capsule.run("%s / %s" % (demo["workflow"], scenario["name"]), run_id=run_id) as run:
+                with run.span(
+                    "model_call",
+                    demo["model_component"],
+                    payload={
+                        "prompt": scenario["prompt"],
+                        **scenario["model_payload"],
+                    },
+                    destination=model_destination,
+                    token_count=scenario["token_count"],
+                ):
+                    pass
+                with run.span(
+                    "tool_call",
+                    demo["tool_component"],
+                    payload={
+                        "tool_payload": scenario["tool_payload"],
+                    },
+                    destination=tool_destination,
+                ):
+                    pass
+                run.record_output(scenario["model_output"])
+            agent_under_test = {
+                "execution_mode": "synthetic_agent",
+                "language": demo["language"],
+                "source_file": "local-api scenario runner",
+                "entrypoint": "run_live_agent",
+                "instrumentation": ["Run.span(model_call)", "Run.span(tool_call)"],
+                "scenario_id": scenario["id"],
+            }
 
         safe_trace = export_safe_trace_from_store(self.store, run_id)
         privacy_map = self.privacy_map(run_id)
@@ -603,6 +630,7 @@ class LocalApiBridge:
                 "data_classes": scenario["data_classes"],
                 "destination_id": demo["destination_id"],
             },
+            "agent_under_test": agent_under_test,
             "test_result": {
                 "status": result_status,
                 "summary": "%s policy %s across %s %s." % (
@@ -1051,6 +1079,40 @@ def _as_list(value: Any) -> List[Any]:
     if value is None:
         return []
     return [value]
+
+
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[3]
+
+
+def _claims_triage_example_path() -> Path:
+    return _repo_root() / "examples" / "claims-triage-python" / "claims_triage.py"
+
+
+def _run_claims_triage_showcase(
+    trace_dir: Path,
+    policy_path: Optional[Path],
+    run_id: str,
+    scenario_id: str,
+    demo: Dict[str, Any],
+) -> Dict[str, Any]:
+    path = _claims_triage_example_path()
+    spec = importlib.util.spec_from_file_location("agent_capsule_claims_triage_example", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("claims triage example could not be loaded")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.run_claims_triage(
+        trace_dir=str(trace_dir),
+        policy_path=str(policy_path) if policy_path else None,
+        run_id=run_id,
+        scenario_id=scenario_id,
+        agent_version=demo["version"],
+        model_destination_id="model_vendor",
+        model_destination_domain="models.example.com",
+        crm_destination_id=demo["destination_id"],
+        crm_destination_domain=demo["destination_domain"],
+    )
 
 
 def _trace_status(trace: Dict[str, Any]) -> str:
