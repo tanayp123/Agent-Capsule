@@ -1066,7 +1066,7 @@ function WorkspaceVerdictBanner({
           value={selectedAgent.name}
           detail={`${selectedAgent.risk} risk · ${selectedAgent.destination}`}
         />
-        <ReportMetric label="Run" value={currentRun.run_id} detail={currentRun.trace_id} />
+        <ReportMetric label="Run" value={compactIdentifier(currentRun.run_id)} detail={compactIdentifier(currentRun.trace_id)} />
         <ReportMetric
           label="Suite findings"
           value={formatCount(scenarioSuiteStatus.totalFindings ?? selectedAgent.findings, "finding")}
@@ -2035,69 +2035,198 @@ function LiveInspectionPanel({
   safeTrace: SafeTrace;
   privacyMap: PrivacyMap;
 }) {
-  const visibleSpans = safeTrace.spans.slice(0, 5);
-  const visibleDestinations = privacyMap.destinations.slice(0, 4);
+  const totalDurationMs = safeTrace.spans.reduce((sum, span) => sum + span.duration_ms, 0);
+  const totalPayloadBytes = safeTrace.spans.reduce((sum, span) => sum + span.payload_size_bytes, 0);
+  const totalTokens = safeTrace.spans.reduce((sum, span) => sum + (span.token_count ?? 0), 0);
+  const undeclaredDestinations = privacyMap.destinations.filter((destination) => !destination.declared_in_policy).length;
+  const highRiskFindings = privacyMap.findings.filter((finding) => finding.severity === "error" || finding.risk === "high").length;
+  const managerPosture = highRiskFindings > 0 || undeclaredDestinations > 0 ? "Review before merge" : "Ready for release";
+  const managerTone = highRiskFindings > 0 || undeclaredDestinations > 0 ? "amber" : "green";
+  const workflowEdges = safeTrace.workflow_graph.edges
+    .map((edge) => `${edge.from} -> ${edge.to}`)
+    .join(", ");
   return (
-    <div className="inspection-grid">
-      <section className="inspection-panel" aria-label="Safe execution timeline">
+    <div className="trace-workbench" aria-label="Agent Capsule trace workbench">
+      <section className="trace-manager-panel" aria-label="Manager trace summary">
         <div className="inspection-header">
           <div>
-            <div className="eyebrow">Safe execution timeline</div>
-            <h3>{safeTrace.diagnostic_summary.status}</h3>
+            <div className="eyebrow">Manager summary</div>
+            <h3>{managerPosture}</h3>
+            <p>{safeTrace.diagnostic_summary.summary}</p>
+          </div>
+          <Badge tone={managerTone}>{privacyMap.findings.length ? `${privacyMap.findings.length} findings` : "No findings"}</Badge>
+        </div>
+        <div className="trace-manager-grid">
+          <ReportMetric label="Release posture" value={managerPosture} detail="Based on policy map findings" />
+          <ReportMetric label="Private data exposure" value="Plaintext excluded" detail={`${formatCount(safeTrace.content_hashes.length, "content hash")} retained`} />
+          <ReportMetric label="Time spent" value={`${totalDurationMs} ms`} detail={`${formatCount(safeTrace.spans.length, "span")} recorded`} />
+          <ReportMetric label="Data leaving boundary" value={formatCount(privacyMap.destinations.length, "destination")} detail={`${formatCount(undeclaredDestinations, "undeclared destination")}`} />
+        </div>
+      </section>
+
+      <section className="trace-workflow-panel" aria-label="Trace workflow structure">
+        <div className="inspection-header">
+          <div>
+            <div className="eyebrow">Workflow structure</div>
+            <h3>{safeTrace.source_trace_id}</h3>
+            <p>{workflowEdges || "Single-node workflow"}</p>
           </div>
           <Badge tone="green">{safeTrace.redaction_profile}</Badge>
         </div>
-        <div className="timeline-list">
-          {visibleSpans.map((span) => (
-            <div key={span.span_id} className="timeline-row">
-              <div>
+        <div className="trace-inventory-grid">
+          <ReportMetric label="Created by" value={safeTrace.created_by} detail={new Date(safeTrace.created_at).toISOString()} />
+          <ReportMetric label="Payload size" value={formatBytes(totalPayloadBytes)} detail="Safe size metadata only" />
+          <ReportMetric label="Token count" value={formatNumber(totalTokens)} detail="Aggregated from span metadata" />
+          <ReportMetric label="Failure span" value={safeTrace.diagnostic_summary.failure_span_id ?? "None"} detail={safeTrace.diagnostic_summary.status} />
+        </div>
+      </section>
+
+      <section className="trace-table-panel" aria-label="Expert span table">
+        <div className="inspection-header">
+          <div>
+            <div className="eyebrow">Expert span table</div>
+            <h3>Safe execution timeline</h3>
+            <p>Granular timing, token, payload-size, policy, and error metadata for each recorded span.</p>
+          </div>
+          <Badge tone={safeTrace.spans.some((span) => span.status === "error") ? "amber" : "green"}>
+            {safeTrace.diagnostic_summary.status}
+          </Badge>
+        </div>
+        <div className="span-table" role="table" aria-label="Safe execution timeline">
+          <div className="span-table-row span-table-head" role="row">
+            <div role="columnheader">Span</div>
+            <div role="columnheader">Component</div>
+            <div role="columnheader">Timing</div>
+            <div role="columnheader">Payload</div>
+            <div role="columnheader">Policy</div>
+            <div role="columnheader">Diagnostic</div>
+          </div>
+          {safeTrace.spans.map((span) => (
+            <div key={span.span_id} className="span-table-row" role="row">
+              <div role="cell">
                 <strong>{span.component_name}</strong>
-                <span>{span.component_type} · {span.status}</span>
+                <span>{span.span_id}</span>
               </div>
-              <div className="timeline-metrics">
-                <span>{span.duration_ms} ms</span>
-                <span>{formatBytes(span.payload_size_bytes)}</span>
+              <div role="cell">
+                <strong>{span.component_type}</strong>
+                <span>{span.status}</span>
+              </div>
+              <div role="cell">
+                <strong>{span.duration_ms} ms</strong>
                 <span>{span.token_count ?? 0} tokens</span>
               </div>
-              <div className="timeline-markers">
+              <div role="cell">
+                <strong>{formatBytes(span.payload_size_bytes)}</strong>
+                <span>size only</span>
+              </div>
+              <div role="cell">
                 <Badge tone={span.policy_decision === "allow" ? "green" : "amber"}>{span.policy_decision}</Badge>
-                {span.redaction_markers.slice(0, 2).map((marker) => (
-                  <Badge key={marker} tone="blue">{marker}</Badge>
-                ))}
+                <span>{span.redaction_markers.length ? span.redaction_markers.join(", ") : "no markers"}</span>
+              </div>
+              <div role="cell">
+                <strong>{span.error_summary ? "Error" : "No error"}</strong>
+                <span>{span.error_summary ?? "Completed without a captured error"}</span>
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="inspection-panel" aria-label="Destination findings">
+      <section className="trace-table-panel" aria-label="Destination findings">
         <div className="inspection-header">
           <div>
             <div className="eyebrow">Destination findings</div>
-            <h3>{privacyMap.findings.length} findings</h3>
+            <h3>{formatCount(privacyMap.destinations.length, "destination")} reviewed</h3>
+            <p>Destinations, observed data classes, declared policy state, and suggested controls.</p>
           </div>
           <Badge tone={privacyMap.findings.length ? "amber" : "green"}>
             {privacyMap.findings.length ? "Review needed" : "No findings"}
           </Badge>
         </div>
-        <div className="destination-list">
-          {visibleDestinations.map((destination) => (
-            <div key={destination.id} className="destination-row">
-              <div>
-                <strong>{destination.id}</strong>
-                <span>{destination.domain ?? "internal"} · {destination.egress_risk} egress</span>
+        <div className="destination-table" role="table" aria-label="Destination privacy findings">
+          <div className="destination-table-row destination-table-head" role="row">
+            <div role="columnheader">Destination</div>
+            <div role="columnheader">Policy</div>
+            <div role="columnheader">Observed data</div>
+            <div role="columnheader">Risk</div>
+            <div role="columnheader">Action</div>
+          </div>
+          {privacyMap.destinations.map((destination) => {
+            const suggestions = privacyMap.policy_suggestions
+              .filter((suggestion) => suggestion.destination_id === destination.id)
+              .map((suggestion) => suggestion.action)
+              .join(", ");
+            return (
+              <div key={destination.id} className="destination-table-row" role="row">
+                <div role="cell">
+                  <strong>{destination.id}</strong>
+                  <span>{destination.domain ?? "internal"} · {destination.type}</span>
+                </div>
+                <div role="cell">
+                  <Badge tone={destination.declared_in_policy ? "green" : "amber"}>
+                    {destination.declared_in_policy ? "Declared" : "Undeclared"}
+                  </Badge>
+                  <span>policy v{privacyMap.policy_version}</span>
+                </div>
+                <div role="cell">
+                  <strong>{destination.observed_data_classes.join(", ") || "None"}</strong>
+                  <span>{destination.allowed_data_classes.length ? `allowed: ${destination.allowed_data_classes.join(", ")}` : "no allowlist yet"}</span>
+                </div>
+                <div role="cell">
+                  <strong>{destination.egress_risk} egress</strong>
+                  <span>{destination.destination_risk} destination risk</span>
+                </div>
+                <div role="cell">
+                  <strong>{destination.actions.join(", ") || "none"}</strong>
+                  <span>{suggestions || "no suggestions"}</span>
+                </div>
               </div>
-              <div className="destination-badges">
-                <Badge tone={destination.declared_in_policy ? "green" : "amber"}>
-                  {destination.declared_in_policy ? "Declared" : "Undeclared"}
-                </Badge>
-                {destination.actions.slice(0, 2).map((action) => (
-                  <Badge key={action} tone={action === "allow" ? "green" : "amber"}>{action}</Badge>
-                ))}
+            );
+          })}
+        </div>
+        {privacyMap.findings.length ? (
+          <div className="finding-list" aria-label="Policy finding details">
+            {privacyMap.findings.map((finding) => (
+              <div key={`${finding.kind}-${finding.destination_id}`} className="finding-row">
+                <Badge tone={finding.severity === "error" ? "red" : "amber"}>{finding.severity}</Badge>
+                <div>
+                  <strong>{finding.kind}</strong>
+                  <span>{finding.message} · {finding.data_classes.join(", ")}</span>
+                </div>
               </div>
-              <p>{destination.observed_data_classes.join(", ") || "No observed data classes"}</p>
-            </div>
-          ))}
+            ))}
+          </div>
+        ) : null}
+      </section>
+
+      <section className="trace-evidence-panel" aria-label="Safe evidence inventory">
+        <div className="inspection-header">
+          <div>
+            <div className="eyebrow">Evidence inventory</div>
+            <h3>Hashes, versions, and redaction markers</h3>
+            <p>The trace keeps reproducibility and diagnostic clues while excluding plaintext payloads.</p>
+          </div>
+          <Badge tone="blue">Safe metadata</Badge>
+        </div>
+        <div className="trace-inventory-grid">
+          <div className="trace-inventory-list">
+            <span>Component versions</span>
+            {Object.entries(safeTrace.component_versions).map(([name, version]) => (
+              <strong key={name}>{name}: {version}</strong>
+            ))}
+          </div>
+          <div className="trace-inventory-list">
+            <span>Content hashes</span>
+            {safeTrace.content_hashes.map((hash) => (
+              <strong key={hash}>{hash}</strong>
+            ))}
+          </div>
+          <div className="trace-inventory-list">
+            <span>Redaction markers</span>
+            {(safeTrace.redaction_markers.length ? safeTrace.redaction_markers : ["none"]).map((marker) => (
+              <strong key={marker}>{marker}</strong>
+            ))}
+          </div>
         </div>
       </section>
     </div>
@@ -2638,6 +2767,13 @@ function formatBytes(value: number) {
     return `${Math.round(value / 1024)} KB`;
   }
   return `${value} B`;
+}
+
+function compactIdentifier(value: string) {
+  if (value.length <= 24) {
+    return value;
+  }
+  return `${value.slice(0, 14)}...${value.slice(-7)}`;
 }
 
 function maskToken(token: string) {

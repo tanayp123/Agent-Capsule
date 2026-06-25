@@ -64,6 +64,9 @@ test("guided workflow moves through agent, data sharing, and evidence steps", as
   await page.getByRole("button", { name: "Review data flow" }).click();
   await expect(page.getByRole("heading", { name: "Review where data went" })).toBeVisible();
   await expect(page.getByLabel("Data flow diagram")).toBeVisible();
+  await expect(page.getByLabel("Manager trace summary")).toBeVisible();
+  await expect(page.getByLabel("Expert span table")).toBeVisible();
+  await expect(page.getByLabel("Safe evidence inventory")).toBeVisible();
   await expect(page.getByLabel("Safe execution timeline")).toBeVisible();
   await expect(page.getByLabel("Destination findings")).toBeVisible();
   await expect(page.getByText("classify-claim", { exact: true })).toBeVisible();
